@@ -1,47 +1,65 @@
-# 架构说明
+# Architecture
 
-`devflow-verify-service` 是 Devflow 的执行结果写回服务，只负责 `Verify`。
+## Purpose
 
-## 职责
+`devflow-verify-service` is the execution-fact ingress and writeback backend.
+It accepts Tekton / Argo / release-step execution facts and writes them back through the approved verify path.
 
-- 提供 Tekton、Argo 和 release step 的写回入口
-- 把外部执行结果回写到 `Manifest`、`Release`、`Intent`
-- 提供统一的 HTTP 入口、健康检查和 Swagger 文档
+## Architecture Style
 
-## 依赖
+This repo uses a **layered ingress/writeback backend**:
 
-- HTTP 层：`Gin`
-- 启动与观测基础设施：`../devflow-service-common`
-- 数据层：Mongo
-
-## 请求链路
-
-```mermaid
-flowchart LR
-  Observer[外部观察器] --> Router[pkg/router]
-  Router --> API[pkg/api/verify.go]
-  API --> ManifestSvc[pkg/service/manifest.go]
-  API --> ReleaseSvc[pkg/service/release.go]
-  API --> IntentSvc[pkg/service/intent.go]
-  ManifestSvc --> Mongo[(Mongo)]
-  ReleaseSvc --> Mongo
-  IntentSvc --> Mongo
+```text
+router -> api -> service -> store
+                    \-> model
 ```
 
-## 不负责的内容
+The service layer should stay focused on:
+- fact normalization
+- writeback rules
+- minimal status/step update behavior
+
+## Request Flow
+
+```text
+Observer / Controller / External callback
+  -> verify router
+  -> verify handler
+  -> verify service
+  -> Mongo-backed writeback path
+  -> HTTP response
+```
+
+## Internal Package Layout
+
+- `cmd/main.go`
+  - process entrypoint only
+- `pkg/config`
+  - config loading
+  - runtime initialization
+- `pkg/router`
+  - verify route registration
+  - middleware wiring
+- `pkg/api`
+  - verify handlers
+- `pkg/service`
+  - manifest/release/intent writeback logic
+- `pkg/store`
+  - Mongo access
+- `pkg/model`
+  - minimal writeback-facing models
+
+## External Dependencies
+
+- `Gin`
+- `MongoDB`
+- `devflow-service-common`
+- Tekton / Argo / controller callback sources
+
+## Non-Goals
 
 - `Project` CRUD
 - `Application` CRUD
 - `Configuration` CRUD
-- `Manifest` / `Release` / `Intent` 的对外查询和变更接口
-- Tekton、Argo 的主动执行调度
-
-## 目录职责
-
-- `cmd/main.go`：进程入口
-- `pkg/config/`：配置加载与基础设施初始化
-- `pkg/router/`：verify 路由注册
-- `pkg/api/`：verify handler
-- `pkg/service/`：最小写回逻辑
-- `pkg/model/`：写回所需最小模型
-- `docs/`：仓库级文档与 Swagger
+- public owner semantics for `Manifest` / `Release` / `Intent`
+- Tekton / Argo active execution dispatch
