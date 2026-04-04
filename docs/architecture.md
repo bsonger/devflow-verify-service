@@ -21,7 +21,7 @@ flowchart LR
   Observer[外部观察器] --> Router[pkg/router]
   Router --> API[pkg/api/verify.go]
   API --> ManifestSvc[pkg/service/manifest.go]
-  API --> ReleaseSvc[pkg/service/job.go]
+  API --> ReleaseSvc[pkg/service/release.go]
   API --> IntentSvc[pkg/service/intent.go]
   ManifestSvc --> Mongo[(Mongo)]
   ReleaseSvc --> Mongo

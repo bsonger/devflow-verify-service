@@ -33,8 +33,7 @@ type Release struct {
 	Steps             []ReleaseStep       `bson:"steps,omitempty" json:"steps,omitempty"`
 }
 
-// CollectionName keeps the historical collection name until storage migration is scheduled.
-func (Release) CollectionName() string { return "job" }
+func (Release) CollectionName() string { return "release" }
 
 type ReleaseStep struct {
 	Name      string     `bson:"name" json:"name"`

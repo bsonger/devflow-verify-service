@@ -58,7 +58,7 @@ special_rules:
   require_full_harness_for:
     - verify
     - manifest
-    - job
+    - release
     - intent
     - verify-service
     - controller

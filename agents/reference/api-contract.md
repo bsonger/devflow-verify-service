@@ -12,7 +12,7 @@
 - `Application`
 - `Configuration`
 - `Manifest`
-- `Job`
+- `Release`
 - `Intent`
 
 要求：

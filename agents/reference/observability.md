@@ -54,7 +54,7 @@
   - `request_id`
 - 涉及控制面资源时，日志追加：
   - `manifest_id`
-  - `job_id`
+  - `release_id`
   - `intent_id`
   - `pipeline_id`
   - `task_name`
@@ -63,7 +63,7 @@
 ## Must Not
 
 - 不让每个服务直接接不同 exporter
-- 不把 `job_id`、`manifest_id`、`intent_id` 这类高基数字段放进 metrics label
+- 不把 `release_id`、`manifest_id`、`intent_id` 这类高基数字段放进 metrics label
 - 不把日志当成状态真相来源
 - 不把 token、secret、kubeconfig、完整 webhook body 直接写日志
 - 不把每个 debug 字段都做成正式指标
@@ -72,7 +72,7 @@
 ## Outputs
 
 - 可关联的 traces、logs、metrics、profiles
-- 能从 `job_id` / `intent_id` 追踪到外部执行系统的链路
+- 能从 `release_id` / `intent_id` 追踪到外部执行系统的链路
 - 明确的 OTel Collector 输出路径
 
 ## Pass/Fail
