@@ -1,38 +1,55 @@
-# 接口规范
+# API Spec
 
-`devflow-verify-service` 只暴露 `/api/v1/verify/*`。
+## Purpose
 
-## 接口列表
+`devflow-verify-service` only exposes verify ingress APIs under `/api/v1/verify/*`.
+These endpoints accept external execution facts and write them back through the approved verify path.
 
+## Endpoint Groups
+
+### Health
 - `GET /api/v1/verify/healthz`
-  - 用途：verify 服务健康检查
-  - 返回：`200`
-- `POST /api/v1/verify/argo/events`
-  - 用途：回写 `Release` 级发布状态
-  - 关键字段：`release_id`、`status`、`intent_id`、`external_ref`
+
+### Build status writeback
 - `POST /api/v1/verify/tekton/events`
-  - 用途：回写 `Manifest` 级构建状态
-  - 关键字段：`manifest_id`、`status`、`pipeline_id`、`intent_id`、`external_ref`
+  - key fields: `manifest_id`, `status`, `pipeline_id`, `intent_id`, `external_ref`
+
+### Build step writeback
 - `POST /api/v1/verify/tekton/steps`
-  - 用途：回写 `Manifest.steps`
-  - 关键字段：`manifest_id`、`pipeline_id`、`task_name`、`task_run`、`status`
+  - key fields: `manifest_id`, `pipeline_id`, `task_name`, `task_run`, `status`
+
+### Release status writeback
+- `POST /api/v1/verify/argo/events`
+  - key fields: `release_id`, `status`, `intent_id`, `external_ref`
+
+### Release step writeback
 - `POST /api/v1/verify/release/steps`
-  - 用途：回写 `Release.steps`
-  - 关键字段：`release_id`、`step_name`、`status`、`progress`
+  - key fields: `release_id`, `step_name`, `status`, `progress`
 
-## 认证
+## Request Rules
 
-- `/api/v1/verify/*` 写接口使用 `X-Devflow-Verify-Token`
-- 若未设置 `VERIFY_SERVICE_SHARED_TOKEN`，本地环境可无 token 访问
-- 若设置了 `VERIFY_SERVICE_SHARED_TOKEN`，写接口必须校验通过才允许写入
+- write endpoints use `X-Devflow-Verify-Token`
+- if `VERIFY_SERVICE_SHARED_TOKEN` is set, write requests must pass token validation
+- if `VERIFY_SERVICE_SHARED_TOKEN` is unset, local environments may access write endpoints without the token
 
-## 错误语义
+## Response Rules
 
-- `400`：请求体缺失、资源 ID 非法、必要字段缺失
-- `401`：共享 token 校验失败
-- `500`：Mongo 更新失败或内部写回异常
+- health returns `200`
+- write endpoints return normal success/error HTTP status codes from handler validation and writeback logic
+- this repo does not expose pagination-based list APIs
 
-## 非目标
+## Error Rules
 
-- 不提供分页接口
-- 不提供 `Project`、`Application`、`Configuration`、`Manifest`、`Release`、`Intent` 的对外 CRUD
+- request body missing / invalid ID / required field missing -> `400`
+- shared token validation failed -> `401`
+- Mongo update or internal writeback failure -> `500`
+
+## Non-Goals
+
+This repo does not expose public CRUD for:
+- `Project`
+- `Application`
+- `Configuration`
+- `Manifest`
+- `Release`
+- `Intent`
