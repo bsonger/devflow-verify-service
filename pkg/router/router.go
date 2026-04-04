@@ -1,8 +1,8 @@
 package router
 
 import (
+	"github.com/bsonger/devflow-service-common/routercore"
 	_ "github.com/bsonger/devflow-verify-service/docs" // swagger docs 自动生成
-	"github.com/bsonger/devflow-verify-service/pkg/telemetry"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -15,34 +15,22 @@ import (
 type Module string
 
 const (
-	ModuleProject       Module = "project"
-	ModuleApplication   Module = "application"
-	ModuleManifest      Module = "manifest"
-	ModuleJob           Module = "job"
-	ModuleIntent        Module = "intent"
-	ModuleConfiguration Module = "configuration"
-	ModuleVerify        Module = "verify"
+	ModuleVerify Module = "verify"
 )
 
 type Options struct {
-	ServiceName                 string
-	EnableSwagger               bool
-	IncludeNestedManifestRoutes bool
-	Modules                     []Module
+	ServiceName   string
+	EnableSwagger bool
+	Modules       []Module
 }
 
 // NewRouter creates the main Gin router.
 func NewRouter() *gin.Engine {
 	return NewRouterWithOptions(Options{
-		ServiceName:                 "devflow",
-		EnableSwagger:               true,
-		IncludeNestedManifestRoutes: true,
+		ServiceName:   "verify-service",
+		EnableSwagger: true,
 		Modules: []Module{
-			ModuleProject,
-			ModuleApplication,
-			ModuleManifest,
-			ModuleJob,
-			ModuleIntent,
+			ModuleVerify,
 		},
 	})
 }
@@ -52,18 +40,13 @@ func NewRouterWithOptions(opts Options) *gin.Engine {
 
 	r := gin.New() // ⭐ 不使用 gin.Default()
 
-	var myFilter otelgin.Filter = func(req *http.Request) bool {
-		path := req.URL.Path
-		return !shouldIgnore(path)
-	}
-
 	r.Use(
-		otelgin.Middleware(serviceName(opts), otelgin.WithFilter(myFilter)),
-		LoggerMiddleware(),
-		GinZapRecovery(),
-		PyroscopeMiddleware(),
-		GinMetricsMiddleware(),
-		GinZapLogger(),
+		otelgin.Middleware(serviceName(opts), otelgin.WithFilter(routercore.OtelFilter)),
+		routercore.LoggerMiddleware(),
+		routercore.GinZapRecovery(),
+		routercore.PyroscopeMiddleware(),
+		routercore.GinMetricsMiddleware(),
+		routercore.GinZapLogger(),
 		cors.New(cors.Config{
 			AllowOrigins:     []string{"*"}, // 允许所有来源
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
@@ -100,7 +83,7 @@ func NewRouterWithOptions(opts Options) *gin.Engine {
 
 func serviceName(opts Options) string {
 	if opts.ServiceName == "" {
-		return "devflow"
+		return "verify-service"
 	}
 	return opts.ServiceName
 }
@@ -115,28 +98,8 @@ func registerModules(api *gin.RouterGroup, opts Options) {
 		seen[module] = struct{}{}
 
 		switch module {
-		case ModuleProject:
-			RegisterProjectRoutes(api)
-		case ModuleApplication:
-			if opts.IncludeNestedManifestRoutes {
-				RegisterApplicationRoutes(api)
-			} else {
-				RegisterApplicationCoreRoutes(api)
-			}
-		case ModuleManifest:
-			RegisterManifestRoutes(api)
-		case ModuleJob:
-			RegisterJobRoutes(api)
-		case ModuleIntent:
-			RegisterIntentRoutes(api)
-		case ModuleConfiguration:
-			RegisterConfigurationRoutes(api)
 		case ModuleVerify:
 			RegisterVerifyRoutes(api)
 		}
 	}
-}
-
-func StartMetricsServer(addr string) {
-	telemetry.StartMetricsServer(addr)
 }

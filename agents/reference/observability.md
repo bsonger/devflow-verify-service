@@ -9,7 +9,7 @@
 适用于：
 
 - 所有入站 HTTP 链路
-- 所有对 Mongo、Tekton、Argo、verify-service 的出站调用
+- 所有对 Mongo 以及其他外部系统的出站调用
 - 所有异步 worker / controller / executor 路径
 
 不适用于：
@@ -28,15 +28,10 @@
 - 发起下游调用时创建 client span，接收请求时创建 server span
 - 跨异步边界时至少保留 `trace_id` 和业务主键，必要时用 span link 衔接
 - 必须观测的关键链路包括：
-  - `POST /api/v1/manifests`
-  - `POST /api/v1/jobs`
-  - `GET /api/v1/intents`
-  - `GET /api/v1/intents/:id`
-  - release worker claim / lease / dispatch
-  - `POST /api/v1/verify/argo/events`
   - `POST /api/v1/verify/release/steps`
-  - `POST /api/v1/verify/tekton/events`
   - `POST /api/v1/verify/tekton/steps`
+  - `POST /api/v1/verify/argo/events`
+  - `POST /api/v1/verify/tekton/events`
   - 所有对 Mongo / Tekton / Argo / verify-service 的出站调用
 - span 名称必须稳定，业务 ID 放入 span attribute 而不是 span 名称
 - 错误必须记录为 span status 和 error event
@@ -57,7 +52,13 @@
   - `trace_id`
   - `span_id`
   - `request_id`
-- 涉及控制面资源时，日志追加 `application_id`、`manifest_id`、`job_id`、`intent_id`、`external_ref`
+- 涉及控制面资源时，日志追加：
+  - `manifest_id`
+  - `job_id`
+  - `intent_id`
+  - `pipeline_id`
+  - `task_name`
+  - `external_ref`
 
 ## Must Not
 

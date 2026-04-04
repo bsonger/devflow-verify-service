@@ -1,23 +1,31 @@
 # Devflow Verify Service
 
-This repository was exported from the `bsonger/devflow` monorepo.
+`devflow-verify-service` 只负责 `Verify` 入站接口，以及 verify 写回所需的最小 `Manifest`、`Job`、`Intent` 内部能力。
 
-GitHub target:
+边界：
 
-- `git@github.com:bsonger/devflow-verify-service.git`
+- 仅暴露 `/api/v1/verify/*`
+- 仅保留 verify 写回需要的最小 model、service、store、配置加载
+- 不提供 `Project`、`Application`、`Configuration`、`Manifest`、`Job`、`Intent` 的对外 CRUD 面
+- 启动、路由中间件和观测基础设施来自 `../devflow-service-common`
 
-Go module:
+仓库文档：
 
-- `github.com/bsonger/devflow-verify-service`
+- [架构](docs/architecture.md)
+- [接口规范](docs/api-spec.md)
+- [约束](docs/constraints.md)
+- [观测规范](docs/observability.md)
+- [Harness](docs/harness.md)
 
-Current scope:
+运行约定：
 
-- service entrypoint from `platform/verify-service/cmd/main.go`
-- shared bootstrap from `platform/shared/bootstrap`
-- current shared domain/runtime packages from `pkg/`
+- 任何调用其他服务或外部系统的代码都必须同时产出 `metrics + trace + structured log`
+- 默认 harness 为 `Planner -> Generator -> Evaluator`
+- 运行时支持 delegation 时，必须真实启动对应 sub-agent，不允许只在单 agent 内口头模拟
 
-Notes:
+常用命令：
 
-- This is a first-stage split repo.
-- Shared packages are still copied from the monorepo so the service can compile independently.
-- A later cleanup phase can move stable shared pieces into `devflow-common` or another shared module.
+- `go run ./cmd`
+- `go build ./cmd/main.go`
+- `go test ./...`
+- `swag init -g cmd/main.go --parseDependency`

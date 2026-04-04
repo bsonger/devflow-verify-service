@@ -1,14 +1,5 @@
 package model
 
-import "k8s.io/client-go/rest"
-
-var KubeConfig *rest.Config
-
-type Consul struct {
-	Address string `mapstructure:"address" json:"address" yaml:"address"`
-	Key     string `mapstructure:"key" json:"key" yaml:"key"`
-}
-
 type LogConfig struct {
 	Level  string `mapstructure:"level" json:"level" yaml:"level"`
 	Format string `mapstructure:"format" json:"format" yaml:"format"`
@@ -26,9 +17,4 @@ type MongoConfig struct {
 type OtelConfig struct {
 	Endpoint    string `mapstructure:"endpoint" json:"endpoint" yaml:"endpoint"`
 	ServiceName string `mapstructure:"service_name" json:"service_name" yaml:"service_name"`
-}
-
-type Repo struct {
-	Address string `mapstructure:"address" json:"address" yaml:"address"`
-	Path    string `mapstructure:"path" json:"path" yaml:"path"`
 }
