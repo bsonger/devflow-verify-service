@@ -44,12 +44,6 @@ These endpoints accept external execution facts and write them back through the 
 - shared token validation failed -> `401`
 - Mongo update or internal writeback failure -> `500`
 
-## Non-Goals
+## Boundary Note
 
-This repo does not expose public CRUD for:
-- `Project`
-- `Application`
-- `Configuration`
-- `Manifest`
-- `Release`
-- `Intent`
+For repo scope and non-goals, see `docs/architecture.md`.
