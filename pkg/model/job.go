@@ -6,36 +6,37 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type JobStatus string
+type ReleaseStatus string
 
 const (
-	JobPending     JobStatus = "Pending"
-	JobRunning     JobStatus = "Running"
-	JobSucceeded   JobStatus = "Succeeded"
-	JobFailed      JobStatus = "Failed"
-	JobRollingBack JobStatus = "RollingBack"
-	JobRolledBack  JobStatus = "RolledBack"
-	JobSyncing     JobStatus = "Syncing"
-	JobSyncFailed  JobStatus = "SyncFailed"
+	ReleasePending     ReleaseStatus = "Pending"
+	ReleaseRunning     ReleaseStatus = "Running"
+	ReleaseSucceeded   ReleaseStatus = "Succeeded"
+	ReleaseFailed      ReleaseStatus = "Failed"
+	ReleaseRollingBack ReleaseStatus = "RollingBack"
+	ReleaseRolledBack  ReleaseStatus = "RolledBack"
+	ReleaseSyncing     ReleaseStatus = "Syncing"
+	ReleaseSyncFailed  ReleaseStatus = "SyncFailed"
 
-	JobInstall  string = "Install"
-	JobUpgrade  string = "Upgrade"
-	JobRollback string = "Rollback"
+	ReleaseInstall  string = "Install"
+	ReleaseUpgrade  string = "Upgrade"
+	ReleaseRollback string = "Rollback"
 )
 
-type Job struct {
+type Release struct {
 	BaseModel `bson:",inline"`
 
 	ExecutionIntentID *primitive.ObjectID `bson:"execution_intent_id,omitempty" json:"execution_intent_id,omitempty"`
 	ManifestID        primitive.ObjectID  `bson:"manifest_id" json:"manifest_id"`
 	Type              string              `bson:"type" json:"type"`
-	Status            JobStatus           `bson:"status" json:"status"`
-	Steps             []JobStep           `bson:"steps,omitempty" json:"steps,omitempty"`
+	Status            ReleaseStatus       `bson:"status" json:"status"`
+	Steps             []ReleaseStep       `bson:"steps,omitempty" json:"steps,omitempty"`
 }
 
-func (Job) CollectionName() string { return "job" }
+// CollectionName keeps the historical collection name until storage migration is scheduled.
+func (Release) CollectionName() string { return "job" }
 
-type JobStep struct {
+type ReleaseStep struct {
 	Name      string     `bson:"name" json:"name"`
 	Progress  int32      `bson:"progress" json:"progress"`
 	Status    StepStatus `bson:"status" json:"status"`
@@ -44,15 +45,15 @@ type JobStep struct {
 	EndTime   *time.Time `bson:"end_time,omitempty" json:"end_time,omitempty"`
 }
 
-func DeriveJobStatusFromSteps(jobType string, currentStatus JobStatus, steps []JobStep) JobStatus {
+func DeriveReleaseStatusFromSteps(releaseAction string, currentStatus ReleaseStatus, steps []ReleaseStep) ReleaseStatus {
 	switch currentStatus {
-	case JobSucceeded, JobFailed, JobRolledBack, JobSyncFailed:
+	case ReleaseSucceeded, ReleaseFailed, ReleaseRolledBack, ReleaseSyncFailed:
 		return currentStatus
 	}
 
 	if len(steps) == 0 {
 		if currentStatus == "" {
-			return JobPending
+			return ReleasePending
 		}
 		return currentStatus
 	}
@@ -77,19 +78,19 @@ func DeriveJobStatusFromSteps(jobType string, currentStatus JobStatus, steps []J
 	}
 
 	if anyFailed {
-		return JobFailed
+		return ReleaseFailed
 	}
 	if allSucceeded {
-		if jobType == JobRollback {
-			return JobRolledBack
+		if releaseAction == ReleaseRollback {
+			return ReleaseRolledBack
 		}
-		return JobSucceeded
+		return ReleaseSucceeded
 	}
 	if anyStarted {
-		return JobRunning
+		return ReleaseRunning
 	}
 	if currentStatus == "" {
-		return JobPending
+		return ReleasePending
 	}
 	return currentStatus
 }

@@ -21,7 +21,7 @@
 
 用途：
 
-- 更新 `job.status`
+- 更新 `release.status`
 - 更新 apply 类 step，例如 `apply manifests`
 
 接口：
@@ -33,7 +33,7 @@
 
 ```json
 {
-  "job_id": "67f000000000000000000001",
+  "release_id": "67f000000000000000000001",
   "status": "Running",
   "external_ref": "argocd/application/demo",
   "message": "Application syncing"
@@ -42,7 +42,7 @@
 
 ```json
 {
-  "job_id": "67f000000000000000000001",
+  "release_id": "67f000000000000000000001",
   "step_name": "apply manifests",
   "status": "Running",
   "progress": 30,
@@ -64,7 +64,7 @@
 
 ```json
 {
-  "job_id": "67f000000000000000000001",
+  "release_id": "67f000000000000000000001",
   "step_name": "deploy ready",
   "status": "Running",
   "progress": 60,
@@ -86,7 +86,7 @@
 
 ```json
 {
-  "job_id": "67f000000000000000000001",
+  "release_id": "67f000000000000000000001",
   "step_name": "canary 30% traffic",
   "status": "Running",
   "progress": 50,
@@ -109,7 +109,7 @@
 
 ```json
 {
-  "job_id": "67f000000000000000000001",
+  "release_id": "67f000000000000000000001",
   "step_name": "green ready",
   "status": "Succeeded",
   "progress": 100,
@@ -119,7 +119,7 @@
 
 ```json
 {
-  "job_id": "67f000000000000000000001",
+  "release_id": "67f000000000000000000001",
   "step_name": "switch traffic",
   "status": "Succeeded",
   "progress": 100,
@@ -129,7 +129,7 @@
 
 ## 服务侧语义
 
-- `release-service` 创建 Job 时会自动初始化默认 step 模板
+- `release-service` 创建 Release 时会自动初始化默认 step 模板
 - `verify-service` 更新 step 时，如果 step 不存在，会自动补创建
-- `verify-service` 会根据所有 steps 自动收敛 `job.status`
-- `argo/events` 仍可直接写 Job 级状态，作为更直接的外部事实来源
+- `verify-service` 会根据所有 steps 自动收敛 `release.status`
+- `argo/events` 仍可直接写 Release 级状态，作为更直接的外部事实来源

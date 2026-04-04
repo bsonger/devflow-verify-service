@@ -4,8 +4,8 @@
 
 - This repository is `devflow-verify-service`.
 - Public surface is `Verify` only.
-- Internal writeback support may keep minimal `Manifest` / `Job` / `Intent` model and service code.
-- Do not reintroduce `Project`, `Application`, `Configuration`, `Manifest`, `Job`, or `Intent` CRUD routes.
+- Internal writeback support may keep minimal `Manifest` / `Release` / `Intent` model and service code.
+- Do not reintroduce `Project`, `Application`, `Configuration`, `Manifest`, `Release`, or `Intent` CRUD routes.
 
 ## Structure
 

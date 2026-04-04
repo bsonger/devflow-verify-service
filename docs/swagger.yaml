@@ -46,26 +46,26 @@ definitions:
         type: string
       intent_id:
         type: string
-      job_id:
-        type: string
       message:
         type: string
+      release_id:
+        type: string
       status:
-        $ref: '#/definitions/model.JobStatus'
+        $ref: '#/definitions/model.ReleaseStatus'
     required:
-    - job_id
+    - release_id
     - status
     type: object
   api.VerifyReleaseStepRequest:
     properties:
       end_time:
         type: string
-      job_id:
-        type: string
       message:
         type: string
       progress:
         type: integer
+      release_id:
+        type: string
       start_time:
         type: string
       status:
@@ -73,30 +73,10 @@ definitions:
       step_name:
         type: string
     required:
-    - job_id
+    - release_id
     - status
     - step_name
     type: object
-  model.JobStatus:
-    enum:
-    - Pending
-    - Running
-    - Succeeded
-    - Failed
-    - RollingBack
-    - RolledBack
-    - Syncing
-    - SyncFailed
-    type: string
-    x-enum-varnames:
-    - JobPending
-    - JobRunning
-    - JobSucceeded
-    - JobFailed
-    - JobRollingBack
-    - JobRolledBack
-    - JobSyncing
-    - JobSyncFailed
   model.ManifestStatus:
     enum:
     - Pending
@@ -109,6 +89,26 @@ definitions:
     - ManifestRunning
     - ManifestSucceeded
     - ManifestFailed
+  model.ReleaseStatus:
+    enum:
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    - RollingBack
+    - RolledBack
+    - Syncing
+    - SyncFailed
+    type: string
+    x-enum-varnames:
+    - ReleasePending
+    - ReleaseRunning
+    - ReleaseSucceeded
+    - ReleaseFailed
+    - ReleaseRollingBack
+    - ReleaseRolledBack
+    - ReleaseSyncing
+    - ReleaseSyncFailed
   model.StepStatus:
     enum:
     - Pending
@@ -128,7 +128,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 由 Argo 或外部发布观察器回写 Job 级状态
+      description: 由 Argo 或外部发布观察器回写 Release 级状态
       parameters:
       - description: Release Status Data
         in: body
@@ -176,7 +176,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 由 Argo Application / Deployment / Rollout 观察器回写 Job steps
+      description: 由 Argo Application / Deployment / Rollout 观察器回写 Release steps
       parameters:
       - description: Release Step Data
         in: body

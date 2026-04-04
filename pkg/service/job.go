@@ -11,26 +11,26 @@ import (
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 )
 
-var JobService = &jobService{}
+var ReleaseService = &releaseService{}
 
-type jobService struct{}
+type releaseService struct{}
 
-func (s *jobService) Get(ctx context.Context, id primitive.ObjectID) (*model.Job, error) {
-	job := &model.Job{}
-	if err := mongo.Repo.FindByID(ctx, job, id); err != nil {
+func (s *releaseService) Get(ctx context.Context, id primitive.ObjectID) (*model.Release, error) {
+	release := &model.Release{}
+	if err := mongo.Repo.FindByID(ctx, release, id); err != nil {
 		return nil, err
 	}
-	if job.DeletedAt != nil {
+	if release.DeletedAt != nil {
 		return nil, mongoDriver.ErrNoDocuments
 	}
-	return job, nil
+	return release, nil
 }
 
-func (s *jobService) updateStatus(ctx context.Context, jobID primitive.ObjectID, status model.JobStatus) error {
+func (s *releaseService) updateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
 	filter := bson.M{
-		"_id": jobID,
+		"_id": releaseID,
 		"status": bson.M{
-			"$nin": []model.JobStatus{model.JobSucceeded, model.JobFailed, model.JobRolledBack, model.JobSyncFailed, status},
+			"$nin": []model.ReleaseStatus{model.ReleaseSucceeded, model.ReleaseFailed, model.ReleaseRolledBack, model.ReleaseSyncFailed, status},
 		},
 	}
 	update := bson.M{
@@ -39,14 +39,14 @@ func (s *jobService) updateStatus(ctx context.Context, jobID primitive.ObjectID,
 			"updated_at": time.Now(),
 		},
 	}
-	return mongo.Repo.UpdateOne(ctx, &model.Job{}, filter, update)
+	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
 }
 
-func (s *jobService) UpdateStatus(ctx context.Context, jobID primitive.ObjectID, status model.JobStatus) error {
-	return s.updateStatus(ctx, jobID, status)
+func (s *releaseService) UpdateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
+	return s.updateStatus(ctx, releaseID, status)
 }
 
-func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
 	if stepName == "" {
 		return nil
 	}
@@ -58,19 +58,19 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 		progress = 100
 	}
 
-	job, err := s.Get(ctx, jobID)
+	release, err := s.Get(ctx, releaseID)
 	if err != nil {
 		return err
 	}
 
-	nextSteps := cloneJobSteps(job.Steps)
-	currentStep := findJobStep(job.Steps, stepName)
+	nextSteps := cloneReleaseSteps(release.Steps)
+	currentStep := findReleaseStep(release.Steps, stepName)
 	if currentStep == nil {
-		if err := s.createStepIfNotExists(ctx, jobID, stepName, status, progress, message, start, end); err != nil {
+		if err := s.createStepIfNotExists(ctx, releaseID, stepName, status, progress, message, start, end); err != nil {
 			return err
 		}
 
-		nextSteps = append(nextSteps, model.JobStep{
+		nextSteps = append(nextSteps, model.ReleaseStep{
 			Name:      stepName,
 			Progress:  progress,
 			Status:    status,
@@ -78,7 +78,7 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 			StartTime: start,
 			EndTime:   end,
 		})
-		return s.updateStatusFromSteps(ctx, jobID, job.Type, job.Status, nextSteps)
+		return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 	}
 
 	if currentStep.Status == model.StepFailed || currentStep.Status == model.StepSucceeded {
@@ -99,7 +99,7 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 	}
 
 	filter := bson.M{
-		"_id": jobID,
+		"_id": releaseID,
 		"steps": bson.M{
 			"$elemMatch": bson.M{
 				"name": stepName,
@@ -110,16 +110,16 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 		},
 	}
 
-	if err := mongo.Repo.UpdateOne(ctx, &model.Job{}, filter, bson.M{"$set": update}); err != nil {
+	if err := mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, bson.M{"$set": update}); err != nil {
 		return err
 	}
 
-	applyJobStepUpdate(nextSteps, stepName, status, progress, message, start, end)
-	return s.updateStatusFromSteps(ctx, jobID, job.Type, job.Status, nextSteps)
+	applyReleaseStepUpdate(nextSteps, stepName, status, progress, message, start, end)
+	return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 }
 
-func (s *jobService) createStepIfNotExists(ctx context.Context, jobID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
-	step := model.JobStep{
+func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+	step := model.ReleaseStep{
 		Name:      stepName,
 		Progress:  progress,
 		Status:    status,
@@ -129,7 +129,7 @@ func (s *jobService) createStepIfNotExists(ctx context.Context, jobID primitive.
 	}
 
 	filter := bson.M{
-		"_id": jobID,
+		"_id": releaseID,
 		"steps": bson.M{
 			"$not": bson.M{
 				"$elemMatch": bson.M{
@@ -148,10 +148,10 @@ func (s *jobService) createStepIfNotExists(ctx context.Context, jobID primitive.
 		},
 	}
 
-	return mongo.Repo.UpdateOne(ctx, &model.Job{}, filter, update)
+	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
 }
 
-func findJobStep(steps []model.JobStep, stepName string) *model.JobStep {
+func findReleaseStep(steps []model.ReleaseStep, stepName string) *model.ReleaseStep {
 	for _, step := range steps {
 		if step.Name == stepName {
 			current := step
@@ -161,16 +161,16 @@ func findJobStep(steps []model.JobStep, stepName string) *model.JobStep {
 	return nil
 }
 
-func cloneJobSteps(steps []model.JobStep) []model.JobStep {
+func cloneReleaseSteps(steps []model.ReleaseStep) []model.ReleaseStep {
 	if len(steps) == 0 {
 		return nil
 	}
-	cloned := make([]model.JobStep, len(steps))
+	cloned := make([]model.ReleaseStep, len(steps))
 	copy(cloned, steps)
 	return cloned
 }
 
-func applyJobStepUpdate(steps []model.JobStep, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) {
+func applyReleaseStepUpdate(steps []model.ReleaseStep, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) {
 	for i := range steps {
 		if steps[i].Name != stepName {
 			continue
@@ -188,10 +188,10 @@ func applyJobStepUpdate(steps []model.JobStep, stepName string, status model.Ste
 	}
 }
 
-func (s *jobService) updateStatusFromSteps(ctx context.Context, jobID primitive.ObjectID, jobType string, currentStatus model.JobStatus, steps []model.JobStep) error {
-	nextStatus := model.DeriveJobStatusFromSteps(jobType, currentStatus, steps)
+func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID primitive.ObjectID, releaseAction string, currentStatus model.ReleaseStatus, steps []model.ReleaseStep) error {
+	nextStatus := model.DeriveReleaseStatusFromSteps(releaseAction, currentStatus, steps)
 	if nextStatus == currentStatus {
 		return nil
 	}
-	return s.updateStatus(ctx, jobID, nextStatus)
+	return s.updateStatus(ctx, releaseID, nextStatus)
 }

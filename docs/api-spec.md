@@ -8,8 +8,8 @@
   - 用途：verify 服务健康检查
   - 返回：`200`
 - `POST /api/v1/verify/argo/events`
-  - 用途：回写 `Job` 级发布状态
-  - 关键字段：`job_id`、`status`、`intent_id`、`external_ref`
+  - 用途：回写 `Release` 级发布状态
+  - 关键字段：`release_id`、`status`、`intent_id`、`external_ref`
 - `POST /api/v1/verify/tekton/events`
   - 用途：回写 `Manifest` 级构建状态
   - 关键字段：`manifest_id`、`status`、`pipeline_id`、`intent_id`、`external_ref`
@@ -17,8 +17,8 @@
   - 用途：回写 `Manifest.steps`
   - 关键字段：`manifest_id`、`pipeline_id`、`task_name`、`task_run`、`status`
 - `POST /api/v1/verify/release/steps`
-  - 用途：回写 `Job.steps`
-  - 关键字段：`job_id`、`step_name`、`status`、`progress`
+  - 用途：回写 `Release.steps`
+  - 关键字段：`release_id`、`step_name`、`status`、`progress`
 
 ## 认证
 
@@ -35,4 +35,4 @@
 ## 非目标
 
 - 不提供分页接口
-- 不提供 `Project`、`Application`、`Configuration`、`Manifest`、`Job`、`Intent` 的对外 CRUD
+- 不提供 `Project`、`Application`、`Configuration`、`Manifest`、`Release`、`Intent` 的对外 CRUD

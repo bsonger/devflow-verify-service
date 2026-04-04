@@ -1,12 +1,12 @@
 # Devflow Verify Service
 
-`devflow-verify-service` 只负责 `Verify` 入站接口，以及 verify 写回所需的最小 `Manifest`、`Job`、`Intent` 内部能力。
+`devflow-verify-service` 只负责 `Verify` 入站接口，以及 verify 写回所需的最小 `Manifest`、`Release`、`Intent` 内部能力。
 
 边界：
 
 - 仅暴露 `/api/v1/verify/*`
 - 仅保留 verify 写回需要的最小 model、service、store、配置加载
-- 不提供 `Project`、`Application`、`Configuration`、`Manifest`、`Job`、`Intent` 的对外 CRUD 面
+- 不提供 `Project`、`Application`、`Configuration`、`Manifest`、`Release`、`Intent` 的对外 CRUD 面
 - 启动、路由中间件和观测基础设施来自 `../devflow-service-common`
 
 仓库文档：

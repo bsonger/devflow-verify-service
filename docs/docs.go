@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/verify/argo/events": {
             "post": {
-                "description": "由 Argo 或外部发布观察器回写 Job 级状态",
+                "description": "由 Argo 或外部发布观察器回写 Release 级状态",
                 "consumes": [
                     "application/json"
                 ],
@@ -91,7 +91,7 @@ const docTemplate = `{
         },
         "/api/v1/verify/release/steps": {
             "post": {
-                "description": "由 Argo Application / Deployment / Rollout 观察器回写 Job steps",
+                "description": "由 Argo Application / Deployment / Rollout 观察器回写 Release steps",
                 "consumes": [
                     "application/json"
                 ],
@@ -320,7 +320,7 @@ const docTemplate = `{
         "api.VerifyReleaseStatusRequest": {
             "type": "object",
             "required": [
-                "job_id",
+                "release_id",
                 "status"
             ],
             "properties": {
@@ -330,21 +330,21 @@ const docTemplate = `{
                 "intent_id": {
                     "type": "string"
                 },
-                "job_id": {
-                    "type": "string"
-                },
                 "message": {
                     "type": "string"
                 },
+                "release_id": {
+                    "type": "string"
+                },
                 "status": {
-                    "$ref": "#/definitions/model.JobStatus"
+                    "$ref": "#/definitions/model.ReleaseStatus"
                 }
             }
         },
         "api.VerifyReleaseStepRequest": {
             "type": "object",
             "required": [
-                "job_id",
+                "release_id",
                 "status",
                 "step_name"
             ],
@@ -352,14 +352,14 @@ const docTemplate = `{
                 "end_time": {
                     "type": "string"
                 },
-                "job_id": {
-                    "type": "string"
-                },
                 "message": {
                     "type": "string"
                 },
                 "progress": {
                     "type": "integer"
+                },
+                "release_id": {
+                    "type": "string"
                 },
                 "start_time": {
                     "type": "string"
@@ -371,29 +371,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "model.JobStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed",
-                "RollingBack",
-                "RolledBack",
-                "Syncing",
-                "SyncFailed"
-            ],
-            "x-enum-varnames": [
-                "JobPending",
-                "JobRunning",
-                "JobSucceeded",
-                "JobFailed",
-                "JobRollingBack",
-                "JobRolledBack",
-                "JobSyncing",
-                "JobSyncFailed"
-            ]
         },
         "model.ManifestStatus": {
             "type": "string",
@@ -408,6 +385,29 @@ const docTemplate = `{
                 "ManifestRunning",
                 "ManifestSucceeded",
                 "ManifestFailed"
+            ]
+        },
+        "model.ReleaseStatus": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed",
+                "RollingBack",
+                "RolledBack",
+                "Syncing",
+                "SyncFailed"
+            ],
+            "x-enum-varnames": [
+                "ReleasePending",
+                "ReleaseRunning",
+                "ReleaseSucceeded",
+                "ReleaseFailed",
+                "ReleaseRollingBack",
+                "ReleaseRolledBack",
+                "ReleaseSyncing",
+                "ReleaseSyncFailed"
             ]
         },
         "model.StepStatus": {

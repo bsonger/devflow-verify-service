@@ -29,15 +29,15 @@ type VerifyBuildStatusRequest struct {
 }
 
 type VerifyReleaseStatusRequest struct {
-	IntentID    string          `json:"intent_id,omitempty"`
-	JobID       string          `json:"job_id" binding:"required"`
-	Status      model.JobStatus `json:"status" binding:"required"`
-	Message     string          `json:"message,omitempty"`
-	ExternalRef string          `json:"external_ref,omitempty"`
+	IntentID    string              `json:"intent_id,omitempty"`
+	ReleaseID   string              `json:"release_id" binding:"required"`
+	Status      model.ReleaseStatus `json:"status" binding:"required"`
+	Message     string              `json:"message,omitempty"`
+	ExternalRef string              `json:"external_ref,omitempty"`
 }
 
 type VerifyReleaseStepRequest struct {
-	JobID     string           `json:"job_id" binding:"required"`
+	ReleaseID string           `json:"release_id" binding:"required"`
 	StepName  string           `json:"step_name" binding:"required"`
 	Status    model.StepStatus `json:"status" binding:"required"`
 	Progress  int32            `json:"progress,omitempty"`
@@ -93,7 +93,7 @@ func (h *VerifyHandler) Health(c *gin.Context) {
 
 // HandleArgoEvent
 // @Summary 回写发布状态
-// @Description 由 Argo 或外部发布观察器回写 Job 级状态
+// @Description 由 Argo 或外部发布观察器回写 Release 级状态
 // @Tags Verify
 // @Accept json
 // @Produce json
@@ -109,23 +109,23 @@ func (h *VerifyHandler) HandleArgoEvent(c *gin.Context) {
 		return
 	}
 
-	jobID, err := primitive.ObjectIDFromHex(req.JobID)
+	releaseID, err := primitive.ObjectIDFromHex(req.ReleaseID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_id"})
 		return
 	}
 
-	if err := service.JobService.UpdateStatus(c.Request.Context(), jobID, req.Status); err != nil {
+	if err := service.ReleaseService.UpdateStatus(c.Request.Context(), releaseID, req.Status); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if req.IntentID != "" {
 		if intentID, err := primitive.ObjectIDFromHex(req.IntentID); err == nil {
-			_ = service.IntentService.UpdateStatus(c.Request.Context(), intentID, mapJobStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+			_ = service.IntentService.UpdateStatus(c.Request.Context(), intentID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 		}
 	} else {
-		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), model.IntentKindRelease, jobID, mapJobStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), model.IntentKindRelease, releaseID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "release status updated"})
@@ -233,7 +233,7 @@ func (h *VerifyHandler) HandleTektonStepEvent(c *gin.Context) {
 
 // HandleReleaseStepEvent
 // @Summary 回写发布步骤
-// @Description 由 Argo Application / Deployment / Rollout 观察器回写 Job steps
+// @Description 由 Argo Application / Deployment / Rollout 观察器回写 Release steps
 // @Tags Verify
 // @Accept json
 // @Produce json
@@ -249,13 +249,13 @@ func (h *VerifyHandler) HandleReleaseStepEvent(c *gin.Context) {
 		return
 	}
 
-	jobID, err := primitive.ObjectIDFromHex(req.JobID)
+	releaseID, err := primitive.ObjectIDFromHex(req.ReleaseID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_id"})
 		return
 	}
 
-	if err := service.JobService.UpdateStep(c.Request.Context(), jobID, req.StepName, req.Status, req.Progress, req.Message, req.StartTime, req.EndTime); err != nil {
+	if err := service.ReleaseService.UpdateStep(c.Request.Context(), releaseID, req.StepName, req.Status, req.Progress, req.Message, req.StartTime, req.EndTime); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -274,11 +274,11 @@ func mapManifestStatusToIntentStatus(status model.ManifestStatus) model.IntentSt
 	}
 }
 
-func mapJobStatusToIntentStatus(status model.JobStatus) model.IntentStatus {
+func mapReleaseStatusToIntentStatus(status model.ReleaseStatus) model.IntentStatus {
 	switch status {
-	case model.JobSucceeded, model.JobRolledBack:
+	case model.ReleaseSucceeded, model.ReleaseRolledBack:
 		return model.IntentSucceeded
-	case model.JobFailed, model.JobSyncFailed:
+	case model.ReleaseFailed, model.ReleaseSyncFailed:
 		return model.IntentFailed
 	default:
 		return model.IntentRunning

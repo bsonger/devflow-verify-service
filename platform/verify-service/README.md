@@ -3,7 +3,7 @@
 ## 当前定位
 
 - 对外只提供 `Verify` 写回接口
-- 内部只保留写回 `Manifest`、`Job`、`Intent` 所需的最小能力
+- 内部只保留写回 `Manifest`、`Release`、`Intent` 所需的最小能力
 
 ## 已迁移内容
 

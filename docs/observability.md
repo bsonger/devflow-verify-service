@@ -20,13 +20,13 @@
 
 - 入站请求必须有 server span
 - 出站调用必须有 client span
-- span attribute 中可包含 `manifest_id`、`job_id`、`intent_id`、`pipeline_id`、`task_name`、`external_ref`
+- span attribute 中可包含 `manifest_id`、`release_id`、`intent_id`、`pipeline_id`、`task_name`、`external_ref`
 
 ## 日志约定
 
 - 必须是结构化日志
 - 至少包含 `service`、`trace_id`、`span_id`、`request_id`
-- verify 写回链路追加 `manifest_id`、`job_id`、`intent_id`、`pipeline_id`、`task_name`、`external_ref`
+- verify 写回链路追加 `manifest_id`、`release_id`、`intent_id`、`pipeline_id`、`task_name`、`external_ref`
 
 ## Profile
 

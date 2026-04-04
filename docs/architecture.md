@@ -5,7 +5,7 @@
 ## 职责
 
 - 提供 Tekton、Argo 和 release step 的写回入口
-- 把外部执行结果回写到 `Manifest`、`Job`、`Intent`
+- 把外部执行结果回写到 `Manifest`、`Release`、`Intent`
 - 提供统一的 HTTP 入口、健康检查和 Swagger 文档
 
 ## 依赖
@@ -21,10 +21,10 @@ flowchart LR
   Observer[外部观察器] --> Router[pkg/router]
   Router --> API[pkg/api/verify.go]
   API --> ManifestSvc[pkg/service/manifest.go]
-  API --> JobSvc[pkg/service/job.go]
+  API --> ReleaseSvc[pkg/service/job.go]
   API --> IntentSvc[pkg/service/intent.go]
   ManifestSvc --> Mongo[(Mongo)]
-  JobSvc --> Mongo
+  ReleaseSvc --> Mongo
   IntentSvc --> Mongo
 ```
 
@@ -33,7 +33,7 @@ flowchart LR
 - `Project` CRUD
 - `Application` CRUD
 - `Configuration` CRUD
-- `Manifest` / `Job` / `Intent` 的对外查询和变更接口
+- `Manifest` / `Release` / `Intent` 的对外查询和变更接口
 - Tekton、Argo 的主动执行调度
 
 ## 目录职责
