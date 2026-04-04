@@ -1,7 +1,16 @@
 # Platform Notes
 
-本目录只保留 verify-service 的补充说明。
+This directory keeps small repo-local runtime notes for `devflow-verify-service`.
 
-- `verify-service/`：verify-service 运行与接入说明
+Use it for:
+- verify-service runtime shape
+- local implementation entrypoints
+- controller / observer integration notes
 
-共享启动和观测基础设施已经迁移到 `../devflow-service-common`，不再在当前仓库维护一份复制实现。
+Do not use it for:
+- cross-repo ownership summaries
+- duplicated API catalogs already documented in `../docs/`
+
+Primary local notes:
+- `verify-service/README.md`
+- `verify-service/controller-integration.md`

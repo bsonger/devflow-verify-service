@@ -1,15 +1,33 @@
-# Verify Service Notes
+# Verify Service Platform Notes
 
-## 当前定位
+## Purpose
 
-- 对外只提供 `Verify` 写回接口
-- 内部只保留写回 `Manifest`、`Release`、`Intent` 所需的最小能力
+This file is the repo-local runtime note for `devflow-verify-service`.
+For public API shape, ownership, and request payload details, prefer:
+- `../README.md`
+- `../docs/`
+- `../docs/resources/verify.md`
 
-## 已迁移内容
+## Runtime entrypoints
 
-- 启动骨架迁移到 `../devflow-service-common/bootstrap`
-- 观测 server 和公共 Gin 中间件迁移到 `../devflow-service-common`
+- process entry: `cmd/main.go`
+- shared bootstrap: `../devflow-service-common/bootstrap`
+- router root: `pkg/router/router.go`
 
-## 参考
+## Main local code paths
 
-- 仓库级文档优先看 `../README.md` 与 `../docs/`
+- verify routes: `pkg/router/verify.go`
+- verify handler: `pkg/api/verify.go`
+- manifest writeback: `pkg/service/manifest.go`
+- release writeback: `pkg/service/release.go`
+- intent writeback: `pkg/service/intent.go`
+
+## Platform dependencies
+
+- shared middleware / startup / observability moved to `devflow-service-common`
+- controller integration details remain in `controller-integration.md`
+
+## Service identity
+
+- OTel `service.name`: `verify-service`
+- verify-specific token header: `X-Devflow-Verify-Token`
