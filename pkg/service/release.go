@@ -6,8 +6,8 @@ import (
 
 	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-verify-service/pkg/model"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -15,42 +15,45 @@ var ReleaseService = &releaseService{}
 
 type releaseService struct{}
 
-func (s *releaseService) Get(ctx context.Context, id primitive.ObjectID) (*model.Release, error) {
-	release := &model.Release{}
-	if err := mongo.Repo.FindByID(ctx, release, id); err != nil {
+func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*releaseRecord, error) {
+	oid, err := bridgeUUIDToObjectID(id)
+	if err != nil {
 		return nil, err
 	}
-	if release.DeletedAt != nil {
+	doc := &releaseDoc{}
+	if err := mongo.Repo.FindByID(ctx, doc, oid); err != nil {
+		return nil, err
+	}
+	record := releaseRecordFromDoc(doc)
+	if record.DeletedAt != nil {
 		return nil, mongoDriver.ErrNoDocuments
 	}
-	return release, nil
+	return &record, nil
 }
 
-func (s *releaseService) updateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
-	filter := bson.M{
-		"_id": releaseID,
+func (s *releaseService) updateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error {
+	oid, err := bridgeUUIDToObjectID(releaseID)
+	if err != nil {
+		return err
+	}
+	return mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
+		"_id": oid,
 		"status": bson.M{
 			"$nin": []model.ReleaseStatus{model.ReleaseSucceeded, model.ReleaseFailed, model.ReleaseRolledBack, model.ReleaseSyncFailed, status},
 		},
-	}
-	update := bson.M{
-		"$set": bson.M{
-			"status":     status,
-			"updated_at": time.Now(),
-		},
-	}
-	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
+	}, bson.M{
+		"$set": bson.M{"status": status, "updated_at": time.Now()},
+	})
 }
 
-func (s *releaseService) UpdateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
+func (s *releaseService) UpdateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error {
 	return s.updateStatus(ctx, releaseID, status)
 }
 
-func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+func (s *releaseService) UpdateStep(ctx context.Context, releaseID uuid.UUID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
 	if stepName == "" {
 		return nil
 	}
-
 	if progress < 0 {
 		progress = 0
 	}
@@ -69,15 +72,7 @@ func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.Obj
 		if err := s.createStepIfNotExists(ctx, releaseID, stepName, status, progress, message, start, end); err != nil {
 			return err
 		}
-
-		nextSteps = append(nextSteps, model.ReleaseStep{
-			Name:      stepName,
-			Progress:  progress,
-			Status:    status,
-			Message:   message,
-			StartTime: start,
-			EndTime:   end,
-		})
+		nextSteps = append(nextSteps, model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end})
 		return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 	}
 
@@ -85,12 +80,11 @@ func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.Obj
 		return nil
 	}
 
-	update := bson.M{
-		"steps.$.status":   status,
-		"steps.$.progress": progress,
-		"steps.$.message":  message,
-		"updated_at":       time.Now(),
+	oid, err := bridgeUUIDToObjectID(releaseID)
+	if err != nil {
+		return err
 	}
+	update := bson.M{"steps.$.status": status, "steps.$.progress": progress, "steps.$.message": message, "updated_at": time.Now()}
 	if start != nil {
 		update["steps.$.start_time"] = *start
 	}
@@ -98,19 +92,13 @@ func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.Obj
 		update["steps.$.end_time"] = *end
 	}
 
-	filter := bson.M{
-		"_id": releaseID,
-		"steps": bson.M{
-			"$elemMatch": bson.M{
-				"name": stepName,
-				"status": bson.M{
-					"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded},
-				},
-			},
-		},
-	}
-
-	if err := mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, bson.M{"$set": update}); err != nil {
+	if err := mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
+		"_id": oid,
+		"steps": bson.M{"$elemMatch": bson.M{
+			"name":   stepName,
+			"status": bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded}},
+		}},
+	}, bson.M{"$set": update}); err != nil {
 		return err
 	}
 
@@ -118,37 +106,19 @@ func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.Obj
 	return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 }
 
-func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
-	step := model.ReleaseStep{
-		Name:      stepName,
-		Progress:  progress,
-		Status:    status,
-		Message:   message,
-		StartTime: start,
-		EndTime:   end,
+func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID uuid.UUID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+	oid, err := bridgeUUIDToObjectID(releaseID)
+	if err != nil {
+		return err
 	}
-
-	filter := bson.M{
-		"_id": releaseID,
-		"steps": bson.M{
-			"$not": bson.M{
-				"$elemMatch": bson.M{
-					"name": stepName,
-				},
-			},
-		},
-	}
-
-	update := bson.M{
-		"$push": bson.M{
-			"steps": step,
-		},
-		"$set": bson.M{
-			"updated_at": time.Now(),
-		},
-	}
-
-	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
+	step := model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end}
+	return mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
+		"_id":   oid,
+		"steps": bson.M{"$not": bson.M{"$elemMatch": bson.M{"name": stepName}}},
+	}, bson.M{
+		"$push": bson.M{"steps": step},
+		"$set":  bson.M{"updated_at": time.Now()},
+	})
 }
 
 func findReleaseStep(steps []model.ReleaseStep, stepName string) *model.ReleaseStep {
@@ -188,7 +158,7 @@ func applyReleaseStepUpdate(steps []model.ReleaseStep, stepName string, status m
 	}
 }
 
-func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID primitive.ObjectID, releaseAction string, currentStatus model.ReleaseStatus, steps []model.ReleaseStep) error {
+func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID uuid.UUID, releaseAction string, currentStatus model.ReleaseStatus, steps []model.ReleaseStep) error {
 	nextStatus := model.DeriveReleaseStatusFromSteps(releaseAction, currentStatus, steps)
 	if nextStatus == currentStatus {
 		return nil

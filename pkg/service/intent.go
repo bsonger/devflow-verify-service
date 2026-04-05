@@ -5,17 +5,20 @@ import (
 	"time"
 
 	"github.com/bsonger/devflow-common/client/mongo"
-	"github.com/bsonger/devflow-verify-service/pkg/model"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var IntentService = &intentService{}
 
 type intentService struct{}
 
-func (s *intentService) UpdateStatus(ctx context.Context, id primitive.ObjectID, status model.IntentStatus, externalRef, message string) error {
-	update := bson.M{
+func (s *intentService) UpdateStatus(ctx context.Context, id uuid.UUID, status string, externalRef, message string) error {
+	oid, err := bridgeUUIDToObjectID(id)
+	if err != nil {
+		return err
+	}
+	return mongo.Repo.UpdateByID(ctx, &intentDoc{}, oid, bson.M{
 		"$set": bson.M{
 			"status":       status,
 			"external_ref": externalRef,
@@ -23,24 +26,23 @@ func (s *intentService) UpdateStatus(ctx context.Context, id primitive.ObjectID,
 			"last_error":   "",
 			"updated_at":   time.Now(),
 		},
-	}
-
-	return mongo.Repo.UpdateByID(ctx, &model.Intent{}, id, update)
+	})
 }
 
-func (s *intentService) UpdateStatusByResource(ctx context.Context, kind model.IntentKind, resourceID primitive.ObjectID, status model.IntentStatus, externalRef, message string) error {
-	filter := bson.M{
-		"kind":        kind,
-		"resource_id": resourceID,
+func (s *intentService) UpdateStatusByResource(ctx context.Context, kind string, resourceID uuid.UUID, status string, externalRef, message string) error {
+	resourceOID, err := bridgeUUIDToObjectID(resourceID)
+	if err != nil {
+		return err
 	}
-	update := bson.M{
+	return mongo.Repo.UpdateOne(ctx, &intentDoc{}, bson.M{
+		"kind":        kind,
+		"resource_id": resourceOID,
+	}, bson.M{
 		"$set": bson.M{
 			"status":       status,
 			"external_ref": externalRef,
 			"message":      message,
 			"updated_at":   time.Now(),
 		},
-	}
-
-	return mongo.Repo.UpdateOne(ctx, &model.Intent{}, filter, update)
+	})
 }

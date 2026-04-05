@@ -48,3 +48,53 @@ type ReleaseStep struct {
 	StartTime *time.Time `json:"start_time,omitempty"`
 	EndTime   *time.Time `json:"end_time,omitempty"`
 }
+
+func DeriveReleaseStatusFromSteps(releaseAction string, currentStatus ReleaseStatus, steps []ReleaseStep) ReleaseStatus {
+	switch currentStatus {
+	case ReleaseSucceeded, ReleaseFailed, ReleaseRolledBack, ReleaseSyncFailed:
+		return currentStatus
+	}
+
+	if len(steps) == 0 {
+		if currentStatus == "" {
+			return ReleasePending
+		}
+		return currentStatus
+	}
+
+	allSucceeded := true
+	anyFailed := false
+	anyStarted := false
+
+	for _, step := range steps {
+		switch step.Status {
+		case StepFailed:
+			anyFailed = true
+			allSucceeded = false
+		case StepSucceeded:
+			anyStarted = true
+		case StepRunning:
+			anyStarted = true
+			allSucceeded = false
+		default:
+			allSucceeded = false
+		}
+	}
+
+	if anyFailed {
+		return ReleaseFailed
+	}
+	if allSucceeded {
+		if releaseAction == "Rollback" {
+			return ReleaseRolledBack
+		}
+		return ReleaseSucceeded
+	}
+	if anyStarted {
+		return ReleaseRunning
+	}
+	if currentStatus == "" {
+		return ReleasePending
+	}
+	return currentStatus
+}

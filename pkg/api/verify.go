@@ -10,7 +10,7 @@ import (
 	"github.com/bsonger/devflow-verify-service/pkg/model"
 	"github.com/bsonger/devflow-verify-service/pkg/service"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
 )
 
 var VerifyRouteApi = NewVerifyHandler()
@@ -109,7 +109,7 @@ func (h *VerifyHandler) HandleArgoEvent(c *gin.Context) {
 		return
 	}
 
-	releaseID, err := primitive.ObjectIDFromHex(req.ReleaseID)
+	releaseID, err := uuid.Parse(req.ReleaseID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_id"})
 		return
@@ -121,11 +121,11 @@ func (h *VerifyHandler) HandleArgoEvent(c *gin.Context) {
 	}
 
 	if req.IntentID != "" {
-		if intentID, err := primitive.ObjectIDFromHex(req.IntentID); err == nil {
+		if intentID, err := uuid.Parse(req.IntentID); err == nil {
 			_ = service.IntentService.UpdateStatus(c.Request.Context(), intentID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 		}
 	} else {
-		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), model.IntentKindRelease, releaseID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), "release", releaseID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "release status updated"})
@@ -149,7 +149,7 @@ func (h *VerifyHandler) HandleTektonEvent(c *gin.Context) {
 		return
 	}
 
-	manifestID, err := primitive.ObjectIDFromHex(req.ManifestID)
+	manifestID, err := uuid.Parse(req.ManifestID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
 		return
@@ -168,11 +168,11 @@ func (h *VerifyHandler) HandleTektonEvent(c *gin.Context) {
 	}
 
 	if req.IntentID != "" {
-		if intentID, err := primitive.ObjectIDFromHex(req.IntentID); err == nil {
+		if intentID, err := uuid.Parse(req.IntentID); err == nil {
 			_ = service.IntentService.UpdateStatus(c.Request.Context(), intentID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 		}
 	} else {
-		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), model.IntentKindBuild, manifestID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), "build", manifestID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "build status updated"})
@@ -196,7 +196,7 @@ func (h *VerifyHandler) HandleTektonStepEvent(c *gin.Context) {
 		return
 	}
 
-	manifestID, err := primitive.ObjectIDFromHex(req.ManifestID)
+	manifestID, err := uuid.Parse(req.ManifestID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
 		return
@@ -249,7 +249,7 @@ func (h *VerifyHandler) HandleReleaseStepEvent(c *gin.Context) {
 		return
 	}
 
-	releaseID, err := primitive.ObjectIDFromHex(req.ReleaseID)
+	releaseID, err := uuid.Parse(req.ReleaseID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_id"})
 		return
@@ -263,24 +263,24 @@ func (h *VerifyHandler) HandleReleaseStepEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "release step updated"})
 }
 
-func mapManifestStatusToIntentStatus(status model.ManifestStatus) model.IntentStatus {
+func mapManifestStatusToIntentStatus(status model.ManifestStatus) string {
 	switch status {
 	case model.ManifestSucceeded:
-		return model.IntentSucceeded
+		return "Succeeded"
 	case model.ManifestFailed:
-		return model.IntentFailed
+		return "Failed"
 	default:
-		return model.IntentRunning
+		return "Running"
 	}
 }
 
-func mapReleaseStatusToIntentStatus(status model.ReleaseStatus) model.IntentStatus {
+func mapReleaseStatusToIntentStatus(status model.ReleaseStatus) string {
 	switch status {
 	case model.ReleaseSucceeded, model.ReleaseRolledBack:
-		return model.IntentSucceeded
+		return "Succeeded"
 	case model.ReleaseFailed, model.ReleaseSyncFailed:
-		return model.IntentFailed
+		return "Failed"
 	default:
-		return model.IntentRunning
+		return "Running"
 	}
 }
