@@ -21,6 +21,11 @@ The service layer should stay focused on:
 - minimal status/step update behavior
 - verification-result persistence only
 
+The target relational resource model is:
+
+- `ManifestVerification` = build verification/result record
+- `ReleaseVerification` = release verification/result record
+
 ## Request Flow
 
 ```text
