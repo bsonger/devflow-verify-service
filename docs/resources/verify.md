@@ -117,7 +117,7 @@ Used by:
 
 ## Validation notes
 
-- `manifest_id` / `release_id` 必须是合法 ObjectID
+- `manifest_id` / `release_id` 必须是合法 UUID
 - required 字段由 handler 的 `binding:"required"` 定义
 - pipeline/task/release step 语义还受 service 写回逻辑约束
 

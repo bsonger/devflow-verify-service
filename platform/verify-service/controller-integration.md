@@ -1,11 +1,11 @@
 # Controller Integration
 
-这份说明用于把 `devflow-controller` 一类观察器从“直接写 Mongo”迁到“调用 verify-service”。
+这份说明用于把 `devflow-controller` 一类观察器从“直接写元数据存储”收敛到“调用 verify-service”。
 
 ## 目标边界
 
 - controller 只监听外部系统状态
-- controller 不直接持有 metadata Mongo 写权限
+- controller 不直接持有 metadata store 写权限
 - controller 统一调用 `verify-service`
 
 ## 鉴权

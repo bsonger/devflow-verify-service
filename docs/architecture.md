@@ -60,7 +60,7 @@ Observer / Controller / External callback
 ## External Dependencies
 
 - `Gin`
-- PostgreSQL target persistence
+- PostgreSQL persistence
 - `devflow-service-common`
 - Tekton / Argo / controller callback sources
 

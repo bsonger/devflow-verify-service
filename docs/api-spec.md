@@ -50,6 +50,6 @@ These endpoints accept external execution facts and write them back through the 
 
 For repo scope and non-goals, see `docs/architecture.md`.
 
-## Transitional Note
+## Swagger Note
 
-Generated Swagger artifacts in this repo still reflect the legacy Mongo/ObjectID handler layer and should be regenerated after the API layer adopts the relational contract.
+Generated Swagger artifacts must stay aligned with the current PostgreSQL-backed API contract. Regenerate them after route, request, or response changes.
