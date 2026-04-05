@@ -4,6 +4,7 @@
 
 `devflow-verify-service` is the execution-fact ingress and writeback backend.
 It accepts Tekton / Argo / release-step execution facts and writes them back through the approved verify path.
+It does not become the public CRUD owner for control-plane resources.
 
 ## Architecture Style
 
@@ -18,6 +19,7 @@ The service layer should stay focused on:
 - fact normalization
 - writeback rules
 - minimal status/step update behavior
+- verification-result persistence only
 
 ## Request Flow
 
@@ -26,7 +28,7 @@ Observer / Controller / External callback
   -> verify router
   -> verify handler
   -> verify service
-  -> Mongo-backed writeback path
+  -> writeback / verification-result store
   -> HTTP response
 ```
 
@@ -43,16 +45,17 @@ Observer / Controller / External callback
 - `pkg/api`
   - verify handlers
 - `pkg/service`
-  - manifest/release/intent writeback logic
+  - manifest/release writeback logic
+  - minimal verification-result update logic
 - `pkg/store`
-  - Mongo access
+  - verification-result persistence
 - `pkg/model`
-  - minimal writeback-facing models
+  - verification-result-facing models
 
 ## External Dependencies
 
 - `Gin`
-- `MongoDB`
+- PostgreSQL target persistence
 - `devflow-service-common`
 - Tekton / Argo / controller callback sources
 
@@ -63,3 +66,4 @@ Observer / Controller / External callback
 - `Configuration` CRUD
 - public owner semantics for `Manifest` / `Release` / `Intent`
 - Tekton / Argo active execution dispatch
+- long-term business-source-of-truth storage for release resources

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`devflow-verify-service` only exposes verify ingress APIs under `/api/v1/verify/*`.
+`devflow-verify-service` defines the converged verify-ingress API surface under `/api/v1/verify/*`.
 These endpoints accept external execution facts and write them back through the approved verify path.
 
 ## Endpoint Groups
@@ -31,6 +31,8 @@ These endpoints accept external execution facts and write them back through the 
 - write endpoints use `X-Devflow-Verify-Token`
 - if `VERIFY_SERVICE_SHARED_TOKEN` is set, write requests must pass token validation
 - if `VERIFY_SERVICE_SHARED_TOKEN` is unset, local environments may access write endpoints without the token
+- verify-service does not expose public CRUD for `Manifest`, `Release`, or `Intent`
+- write endpoints are for controller/observer execution facts only
 
 ## Response Rules
 
@@ -42,7 +44,7 @@ These endpoints accept external execution facts and write them back through the 
 
 - request body missing / invalid ID / required field missing -> `400`
 - shared token validation failed -> `401`
-- Mongo update or internal writeback failure -> `500`
+- internal writeback failure -> `500`
 
 ## Boundary Note
 
