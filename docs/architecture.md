@@ -72,3 +72,9 @@ Observer / Controller / External callback
 - public owner semantics for `Manifest` / `Release` / `Intent`
 - Tekton / Argo active execution dispatch
 - long-term business-source-of-truth storage for release resources
+
+## Swagger generation
+
+- `Dockerfile` runs `swag init -g cmd/main.go --parseDependency -o docs/generated/swagger` before building.
+- Generated artifacts live in `docs/generated/swagger` and should be regenerated when handlers change.
+- Export scripts copy the same folder so split repos stay consistent.
