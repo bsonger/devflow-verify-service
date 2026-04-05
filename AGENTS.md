@@ -2,10 +2,17 @@
 
 ## Boundary
 
-- This repository is `devflow-verify-service`.
-- Public surface is `Verify` only.
-- Internal writeback support may keep minimal `Manifest` / `Release` / `Intent` model and service code.
-- Do not reintroduce `Project`, `Application`, `Configuration`, `Manifest`, `Release`, or `Intent` CRUD routes.
+Repo-local boundary summary:
+
+- this repository is `devflow-verify-service`
+- public surface is `Verify`
+- internal writeback may keep minimal `Manifest` / `Release` / `Intent` support
+
+Authoritative boundary and resource semantics:
+
+- `devflow-control/docs/system/boundaries.md`
+- `devflow-control/docs/services/verify-service.md`
+- `devflow-control/docs/resources/verify-event.md`
 
 ## Structure
 
@@ -13,7 +20,7 @@
 - `pkg/api/` contains verify handlers only.
 - `pkg/service/` contains verify writeback logic only.
 - `pkg/router/` contains verify-only routes and middleware assembly.
-- `pkg/config/` initializes config, observability, Mongo, and local store state.
+- `pkg/config/` initializes config, observability, PostgreSQL, and local store state.
 - `docs/` contains the repository-level architecture, API, constraints, observability, and harness docs.
 
 ## Required Rules
