@@ -75,6 +75,12 @@ Observer / Controller / External callback
 
 ## Swagger generation
 
+- `scripts/regen-swagger.sh` refreshes `docs/generated/swagger`.
+- `scripts/build.sh` runs the regen step and then builds `bin/devflow-verify-service`.
+- Export tooling/published repos copy `docs/generated/swagger`, so keep it up to date.
+
+## Swagger generation
+
 - `Dockerfile` runs `swag init -g cmd/main.go --parseDependency -o docs/generated/swagger` before building.
 - Generated artifacts live in `docs/generated/swagger` and should be regenerated when handlers change.
 - Export scripts copy the same folder so split repos stay consistent.
