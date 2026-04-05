@@ -1,27 +1,14 @@
-# Intent Reference
+# Intent Reference Redirect
 
-## Purpose
+This file is index-only.
 
-说明 `execution_intents` 的资源语义、创建链路、消费链路与回写边界。
+Authoritative sources:
 
-## Scope
+- `devflow-control/docs/resources/intent.md`
+- `devflow-control/docs/services/release-service.md`
+- `devflow-release-service/docs/resources/intent.md`
 
-适用于：
-
-- build intent
-- release intent
-- worker 认领与回写语义
-
-## Must
-
-- `Intent` 表示控制面记录的待执行或正在执行的 build / release 编排请求
-- 典型字段：
-  - `id`
-  - `kind`
-  - `status`
-  - `resource_type`
-  - `resource_id`
-  - `external_ref`
+This file must not define intent semantics.
   - `claimed_by`
   - `lease_expires_at`
 - 种类枚举：
