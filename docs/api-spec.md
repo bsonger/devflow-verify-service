@@ -36,15 +36,18 @@ These endpoints accept external execution facts and write them back through the 
 
 ## Response Rules
 
-- health returns `200`
-- write endpoints return normal success/error HTTP status codes from handler validation and writeback logic
+- health returns `200` with `{ "data": { "service": "verify-service", "status": "ok" } }`
+- write endpoints return `204 No Content` on success
+- errors use `{ "error": { "code", "message", "details" } }`
 - this repo does not expose pagination-based list APIs
 
 ## Error Rules
 
-- request body missing / invalid ID / required field missing -> `400`
-- shared token validation failed -> `401`
-- internal writeback failure -> `500`
+- request body missing / invalid ID / required field missing -> `400 invalid_argument`
+- missing target manifest or release -> `404 not_found`
+- missing derived pipeline binding during step writeback -> `400 failed_precondition`
+- shared token validation failed -> `401 unauthorized`
+- internal writeback failure -> `500 internal`
 
 ## Boundary Note
 

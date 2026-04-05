@@ -1,12 +1,16 @@
 package api
 
 import (
+	"context"
 	"crypto/subtle"
+	"database/sql"
+	"errors"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/bsonger/devflow-service-common/httpx"
 	"github.com/bsonger/devflow-verify-service/pkg/model"
 	"github.com/bsonger/devflow-verify-service/pkg/service"
 	"github.com/gin-gonic/gin"
@@ -15,7 +19,36 @@ import (
 
 var VerifyRouteApi = NewVerifyHandler()
 
-type VerifyHandler struct{}
+type VerifyHandler struct {
+	manifestSvc manifestWriteService
+	releaseSvc  releaseWriteService
+	intentSvc   intentWriteService
+}
+
+type manifestWriteService interface {
+	AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error
+	UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error
+	UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error
+	BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error
+}
+
+type releaseWriteService interface {
+	UpdateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error
+	UpdateStep(ctx context.Context, releaseID uuid.UUID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error
+}
+
+type intentWriteService interface {
+	UpdateStatus(ctx context.Context, id uuid.UUID, status string, externalRef, message string) error
+	UpdateStatusByResource(ctx context.Context, kind string, resourceID uuid.UUID, status string, externalRef, message string) error
+}
+
+var loadManifestPipelineID = func(ctx context.Context, id uuid.UUID) (string, error) {
+	manifest, err := service.ManifestService.Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return manifest.PipelineID, nil
+}
 
 const VerifyTokenHeader = "X-Devflow-Verify-Token"
 
@@ -58,7 +91,11 @@ type VerifyBuildStepRequest struct {
 }
 
 func NewVerifyHandler() *VerifyHandler {
-	return &VerifyHandler{}
+	return &VerifyHandler{
+		manifestSvc: service.ManifestService,
+		releaseSvc:  service.ReleaseService,
+		intentSvc:   service.IntentService,
+	}
 }
 
 func RequireVerifyToken() gin.HandlerFunc {
@@ -71,7 +108,8 @@ func RequireVerifyToken() gin.HandlerFunc {
 
 		token := strings.TrimSpace(c.GetHeader(VerifyTokenHeader))
 		if subtle.ConstantTimeCompare([]byte(token), []byte(expected)) != 1 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			httpx.WriteError(c, http.StatusUnauthorized, "unauthorized", "unauthorized", nil)
+			c.Abort()
 			return
 		}
 
@@ -82,10 +120,10 @@ func RequireVerifyToken() gin.HandlerFunc {
 // Health
 // @Summary Verify Service 健康检查
 // @Tags Verify
-// @Success 200 {object} map[string]string
+// @Success 200 {object} httpx.DataResponse[map[string]string]
 // @Router /api/v1/verify/healthz [get]
 func (h *VerifyHandler) Health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
+	httpx.WriteData(c, http.StatusOK, gin.H{
 		"service": "verify-service",
 		"status":  "ok",
 	})
@@ -98,37 +136,35 @@ func (h *VerifyHandler) Health(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param data body VerifyReleaseStatusRequest true "Release Status Data"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 204
 // @Router /api/v1/verify/argo/events [post]
 func (h *VerifyHandler) HandleArgoEvent(c *gin.Context) {
 	var req VerifyReleaseStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	releaseID, err := uuid.Parse(req.ReleaseID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid release_id", nil)
 		return
 	}
 
-	if err := service.ReleaseService.UpdateStatus(c.Request.Context(), releaseID, req.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.releaseSvc.UpdateStatus(c.Request.Context(), releaseID, req.Status); err != nil {
+		writeVerifyError(c, err)
 		return
 	}
 
 	if req.IntentID != "" {
 		if intentID, err := uuid.Parse(req.IntentID); err == nil {
-			_ = service.IntentService.UpdateStatus(c.Request.Context(), intentID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+			_ = h.intentSvc.UpdateStatus(c.Request.Context(), intentID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 		}
 	} else {
-		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), "release", releaseID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+		_ = h.intentSvc.UpdateStatusByResource(c.Request.Context(), "release", releaseID, mapReleaseStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "release status updated"})
+	httpx.WriteNoContent(c)
 }
 
 // HandleTektonEvent
@@ -138,44 +174,42 @@ func (h *VerifyHandler) HandleArgoEvent(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param data body VerifyBuildStatusRequest true "Build Status Data"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 204
 // @Router /api/v1/verify/tekton/events [post]
 func (h *VerifyHandler) HandleTektonEvent(c *gin.Context) {
 	var req VerifyBuildStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	manifestID, err := uuid.Parse(req.ManifestID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid manifest_id", nil)
 		return
 	}
 
 	if req.PipelineID != "" {
-		if err := service.ManifestService.AssignPipelineID(c.Request.Context(), manifestID, req.PipelineID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := h.manifestSvc.AssignPipelineID(c.Request.Context(), manifestID, req.PipelineID); err != nil {
+			writeVerifyError(c, err)
 			return
 		}
 	}
 
-	if err := service.ManifestService.UpdateManifestStatusByID(c.Request.Context(), manifestID, req.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.manifestSvc.UpdateManifestStatusByID(c.Request.Context(), manifestID, req.Status); err != nil {
+		writeVerifyError(c, err)
 		return
 	}
 
 	if req.IntentID != "" {
 		if intentID, err := uuid.Parse(req.IntentID); err == nil {
-			_ = service.IntentService.UpdateStatus(c.Request.Context(), intentID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+			_ = h.intentSvc.UpdateStatus(c.Request.Context(), intentID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 		}
 	} else {
-		_ = service.IntentService.UpdateStatusByResource(c.Request.Context(), "build", manifestID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+		_ = h.intentSvc.UpdateStatusByResource(c.Request.Context(), "build", manifestID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "build status updated"})
+	httpx.WriteNoContent(c)
 }
 
 // HandleTektonStepEvent
@@ -185,50 +219,48 @@ func (h *VerifyHandler) HandleTektonEvent(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param data body VerifyBuildStepRequest true "Build Step Data"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 204
 // @Router /api/v1/verify/tekton/steps [post]
 func (h *VerifyHandler) HandleTektonStepEvent(c *gin.Context) {
 	var req VerifyBuildStepRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	manifestID, err := uuid.Parse(req.ManifestID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid manifest_id", nil)
 		return
 	}
 
 	if req.PipelineID == "" {
-		manifest, err := service.ManifestService.Get(c.Request.Context(), manifestID)
+		pipelineID, err := loadManifestPipelineID(c.Request.Context(), manifestID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			writeVerifyError(c, err)
 			return
 		}
-		req.PipelineID = manifest.PipelineID
+		req.PipelineID = pipelineID
 	}
 
 	if req.PipelineID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required until manifest is bound"})
+		httpx.WriteError(c, http.StatusBadRequest, "failed_precondition", "pipeline_id is required until manifest is bound", nil)
 		return
 	}
 
 	if req.TaskRun != "" {
-		if err := service.ManifestService.BindTaskRun(c.Request.Context(), req.PipelineID, req.TaskName, req.TaskRun); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := h.manifestSvc.BindTaskRun(c.Request.Context(), req.PipelineID, req.TaskName, req.TaskRun); err != nil {
+			writeVerifyError(c, err)
 			return
 		}
 	}
 
-	if err := service.ManifestService.UpdateStepStatus(c.Request.Context(), req.PipelineID, req.TaskName, req.Status, req.Message, req.StartTime, req.EndTime); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.manifestSvc.UpdateStepStatus(c.Request.Context(), req.PipelineID, req.TaskName, req.Status, req.Message, req.StartTime, req.EndTime); err != nil {
+		writeVerifyError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "build step updated"})
+	httpx.WriteNoContent(c)
 }
 
 // HandleReleaseStepEvent
@@ -238,29 +270,35 @@ func (h *VerifyHandler) HandleTektonStepEvent(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param data body VerifyReleaseStepRequest true "Release Step Data"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 204
 // @Router /api/v1/verify/release/steps [post]
 func (h *VerifyHandler) HandleReleaseStepEvent(c *gin.Context) {
 	var req VerifyReleaseStepRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	releaseID, err := uuid.Parse(req.ReleaseID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid release_id", nil)
 		return
 	}
 
-	if err := service.ReleaseService.UpdateStep(c.Request.Context(), releaseID, req.StepName, req.Status, req.Progress, req.Message, req.StartTime, req.EndTime); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.releaseSvc.UpdateStep(c.Request.Context(), releaseID, req.StepName, req.Status, req.Progress, req.Message, req.StartTime, req.EndTime); err != nil {
+		writeVerifyError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "release step updated"})
+	httpx.WriteNoContent(c)
+}
+
+func writeVerifyError(c *gin.Context, err error) {
+	if errors.Is(err, sql.ErrNoRows) {
+		httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+		return
+	}
+	httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 }
 
 func mapManifestStatusToIntentStatus(status model.ManifestStatus) string {

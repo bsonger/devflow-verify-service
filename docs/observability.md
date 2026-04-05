@@ -1,39 +1,43 @@
-# 观测规范
+# Observability
 
-## 总则
+## Shared Baseline
 
-本仓库要求 `metrics`、`log`、`trace`、`profile` 统一落地。
+This repo follows the shared telemetry contract implemented in `devflow-service-common`.
 
-## 必须记录的场景
+- structured logs with shared runtime fields
+- `devflow_http_*` ingress metrics
+- standard server/client spans with service-defined business attributes
+- optional diagnostics only for `pprof` and Pyroscope
 
-- 每个入站 HTTP 请求
-- 每个出站服务调用
-- 每个外部系统调用
+## Repo-Local Focus
 
-## HTTP 指标
+`devflow-verify-service` should add writeback context for:
 
-- 请求计数
-- 请求耗时
-- 错误计数
+- `manifest`
+- `release`
+- `intent`
+- `pipeline`
+- `task`
 
-## Trace 约定
+Recommended structured fields:
 
-- 入站请求必须有 server span
-- 出站调用必须有 client span
-- span attribute 中可包含 `manifest_id`、`release_id`、`intent_id`、`pipeline_id`、`task_name`、`external_ref`
+- `resource`
+- `resource_id`
+- `manifest_id`
+- `release_id`
+- `intent_id`
+- `pipeline_id`
+- `task_name`
+- `result`
+- `error_code`
 
-## 日志约定
+## Async Notes
 
-- 必须是结构化日志
-- 至少包含 `service`、`trace_id`、`span_id`、`request_id`
-- verify 写回链路追加 `manifest_id`、`release_id`、`intent_id`、`pipeline_id`、`task_name`、`external_ref`
+- verify writeback endpoints should preserve inbound request trace context when callers provide it
+- updates triggered by external controllers should emit resource-scoped logs instead of high-cardinality metrics labels
 
 ## Profile
 
-- 保留 `pprof`
-- 仅在需要诊断性能问题时启用
-
-## 禁止项
-
-- 不要把高基数字段放进 metrics label
-- 不要把 `/metrics`、`/healthz`、`/readyz`、`/debug/pprof/*` 当作业务流量
+- `pprof` is disabled by default
+- Pyroscope is disabled by default
+- both are enabled only through explicit runtime configuration
