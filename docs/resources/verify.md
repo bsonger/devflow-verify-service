@@ -5,7 +5,7 @@
 - owner repo: `devflow-verify-service`
 - authoritative handler/API file: `pkg/api/verify.go`
 - authoritative API doc: `docs/api-spec.md`
-- swagger source: `docs/swagger.yaml`
+- swagger source: `docs/generated/swagger/swagger.yaml`
 
 ## Purpose
 
