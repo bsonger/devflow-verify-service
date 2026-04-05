@@ -4,9 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/bsonger/devflow-common/client/mongo"
+	"github.com/bsonger/devflow-verify-service/pkg/store"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var IntentService = &intentService{}
@@ -14,35 +13,25 @@ var IntentService = &intentService{}
 type intentService struct{}
 
 func (s *intentService) UpdateStatus(ctx context.Context, id uuid.UUID, status string, externalRef, message string) error {
-	oid, err := bridgeUUIDToObjectID(id)
+	result, err := store.DB().ExecContext(ctx, `
+		update execution_intents
+		set status = $2, external_ref = $3, message = $4, last_error = '', updated_at = $5
+		where id = $1 and deleted_at is null
+	`, id, status, externalRef, message, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateByID(ctx, &intentDoc{}, oid, bson.M{
-		"$set": bson.M{
-			"status":       status,
-			"external_ref": externalRef,
-			"message":      message,
-			"last_error":   "",
-			"updated_at":   time.Now(),
-		},
-	})
+	return ensureRowsAffected(result)
 }
 
 func (s *intentService) UpdateStatusByResource(ctx context.Context, kind string, resourceID uuid.UUID, status string, externalRef, message string) error {
-	resourceOID, err := bridgeUUIDToObjectID(resourceID)
+	result, err := store.DB().ExecContext(ctx, `
+		update execution_intents
+		set status = $3, external_ref = $4, message = $5, updated_at = $6
+		where kind = $1 and resource_id = $2 and deleted_at is null
+	`, kind, resourceID, status, externalRef, message, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateOne(ctx, &intentDoc{}, bson.M{
-		"kind":        kind,
-		"resource_id": resourceOID,
-	}, bson.M{
-		"$set": bson.M{
-			"status":       status,
-			"external_ref": externalRef,
-			"message":      message,
-			"updated_at":   time.Now(),
-		},
-	})
+	return ensureRowsAffected(result)
 }

@@ -2,13 +2,12 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
-	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-verify-service/pkg/model"
+	"github.com/bsonger/devflow-verify-service/pkg/store"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
-	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 )
 
 var ReleaseService = &releaseService{}
@@ -16,34 +15,41 @@ var ReleaseService = &releaseService{}
 type releaseService struct{}
 
 func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*releaseRecord, error) {
-	oid, err := bridgeUUIDToObjectID(id)
+	record, err := scanReleaseRecord(store.DB().QueryRowContext(ctx, `
+		select id, type, steps, status, deleted_at
+		from releases
+		where id = $1
+	`, id))
 	if err != nil {
 		return nil, err
 	}
-	doc := &releaseDoc{}
-	if err := mongo.Repo.FindByID(ctx, doc, oid); err != nil {
-		return nil, err
-	}
-	record := releaseRecordFromDoc(doc)
 	if record.DeletedAt != nil {
-		return nil, mongoDriver.ErrNoDocuments
+		return nil, sql.ErrNoRows
 	}
-	return &record, nil
+	return record, nil
 }
 
 func (s *releaseService) updateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error {
-	oid, err := bridgeUUIDToObjectID(releaseID)
+	record, err := s.Get(ctx, releaseID)
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
-		"_id": oid,
-		"status": bson.M{
-			"$nin": []model.ReleaseStatus{model.ReleaseSucceeded, model.ReleaseFailed, model.ReleaseRolledBack, model.ReleaseSyncFailed, status},
-		},
-	}, bson.M{
-		"$set": bson.M{"status": status, "updated_at": time.Now()},
-	})
+	switch record.Status {
+	case model.ReleaseSucceeded, model.ReleaseFailed, model.ReleaseRolledBack, model.ReleaseSyncFailed:
+		return nil
+	}
+	if record.Status == status {
+		return nil
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update releases
+		set status = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, releaseID, status, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
 }
 
 func (s *releaseService) UpdateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error {
@@ -69,10 +75,10 @@ func (s *releaseService) UpdateStep(ctx context.Context, releaseID uuid.UUID, st
 	nextSteps := cloneReleaseSteps(release.Steps)
 	currentStep := findReleaseStep(release.Steps, stepName)
 	if currentStep == nil {
-		if err := s.createStepIfNotExists(ctx, releaseID, stepName, status, progress, message, start, end); err != nil {
+		nextSteps = append(nextSteps, model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end})
+		if err := s.updateSteps(ctx, releaseID, nextSteps); err != nil {
 			return err
 		}
-		nextSteps = append(nextSteps, model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end})
 		return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 	}
 
@@ -80,45 +86,11 @@ func (s *releaseService) UpdateStep(ctx context.Context, releaseID uuid.UUID, st
 		return nil
 	}
 
-	oid, err := bridgeUUIDToObjectID(releaseID)
-	if err != nil {
-		return err
-	}
-	update := bson.M{"steps.$.status": status, "steps.$.progress": progress, "steps.$.message": message, "updated_at": time.Now()}
-	if start != nil {
-		update["steps.$.start_time"] = *start
-	}
-	if end != nil {
-		update["steps.$.end_time"] = *end
-	}
-
-	if err := mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
-		"_id": oid,
-		"steps": bson.M{"$elemMatch": bson.M{
-			"name":   stepName,
-			"status": bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded}},
-		}},
-	}, bson.M{"$set": update}); err != nil {
-		return err
-	}
-
 	applyReleaseStepUpdate(nextSteps, stepName, status, progress, message, start, end)
-	return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
-}
-
-func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID uuid.UUID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
-	oid, err := bridgeUUIDToObjectID(releaseID)
-	if err != nil {
+	if err := s.updateSteps(ctx, releaseID, nextSteps); err != nil {
 		return err
 	}
-	step := model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end}
-	return mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
-		"_id":   oid,
-		"steps": bson.M{"$not": bson.M{"$elemMatch": bson.M{"name": stepName}}},
-	}, bson.M{
-		"$push": bson.M{"steps": step},
-		"$set":  bson.M{"updated_at": time.Now()},
-	})
+	return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 }
 
 func findReleaseStep(steps []model.ReleaseStep, stepName string) *model.ReleaseStep {
@@ -164,4 +136,20 @@ func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID uu
 		return nil
 	}
 	return s.updateStatus(ctx, releaseID, nextStatus)
+}
+
+func (s *releaseService) updateSteps(ctx context.Context, releaseID uuid.UUID, steps []model.ReleaseStep) error {
+	stepsJSON, err := marshalJSON(steps, "[]")
+	if err != nil {
+		return err
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update releases
+		set steps = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, releaseID, stepsJSON, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
 }

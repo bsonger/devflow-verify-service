@@ -2,13 +2,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
-	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-verify-service/pkg/model"
+	"github.com/bsonger/devflow-verify-service/pkg/store"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var ManifestService = &manifestService{}
@@ -16,16 +16,11 @@ var ManifestService = &manifestService{}
 type manifestService struct{}
 
 func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*manifestRecord, error) {
-	oid, err := bridgeUUIDToObjectID(id)
-	if err != nil {
-		return nil, err
-	}
-	doc := &manifestDoc{}
-	if err := mongo.Repo.FindByID(ctx, doc, oid); err != nil {
-		return nil, err
-	}
-	record := manifestRecordFromDoc(doc)
-	return &record, nil
+	return scanManifestRecord(store.DB().QueryRowContext(ctx, `
+		select id, pipeline_id, steps, status, deleted_at
+		from manifests
+		where id = $1
+	`, id))
 }
 
 func (s *manifestService) AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error {
@@ -35,26 +30,30 @@ func (s *manifestService) AssignPipelineID(ctx context.Context, manifestID uuid.
 	if pipelineID == "" {
 		return errors.New("pipeline id cannot be empty")
 	}
-	oid, err := bridgeUUIDToObjectID(manifestID)
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set pipeline_id = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, manifestID, pipelineID, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateByID(ctx, &manifestDoc{}, oid, bson.M{
-		"$set": bson.M{"pipeline_id": pipelineID, "updated_at": time.Now()},
-	})
+	return ensureRowsAffected(result)
 }
 
 func (s *manifestService) UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error {
 	if manifestID == uuid.Nil {
 		return errors.New("manifest id cannot be zero")
 	}
-	oid, err := bridgeUUIDToObjectID(manifestID)
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set status = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, manifestID, status, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateByID(ctx, &manifestDoc{}, oid, bson.M{
-		"$set": bson.M{"status": status, "updated_at": time.Now()},
-	})
+	return ensureRowsAffected(result)
 }
 
 func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
@@ -65,21 +64,52 @@ func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, task
 		return errors.New("task name cannot be empty")
 	}
 
-	update := bson.M{"steps.$.status": status, "steps.$.message": message, "updated_at": time.Now()}
-	if start != nil {
-		update["steps.$.start_time"] = *start
-	}
-	if end != nil {
-		update["steps.$.end_time"] = *end
+	row := store.DB().QueryRowContext(ctx, `
+		select id, pipeline_id, steps, status, deleted_at
+		from manifests
+		where pipeline_id = $1 and deleted_at is null
+	`, pipelineID)
+	record, err := scanManifestRecord(row)
+	if err != nil {
+		return err
 	}
 
-	return mongo.Repo.UpdateOne(ctx, &manifestDoc{}, bson.M{
-		"pipeline_id": pipelineID,
-		"steps": bson.M{"$elemMatch": bson.M{
-			"task_name": taskName,
-			"status":    bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded, status}},
-		}},
-	}, bson.M{"$set": update})
+	changed := false
+	for i := range record.Steps {
+		if record.Steps[i].TaskName != taskName {
+			continue
+		}
+		if record.Steps[i].Status == model.StepFailed || record.Steps[i].Status == model.StepSucceeded || record.Steps[i].Status == status {
+			return nil
+		}
+		record.Steps[i].Status = status
+		record.Steps[i].Message = message
+		if start != nil {
+			record.Steps[i].StartTime = start
+		}
+		if end != nil {
+			record.Steps[i].EndTime = end
+		}
+		changed = true
+		break
+	}
+	if !changed {
+		return nil
+	}
+
+	stepsJSON, err := marshalJSON(record.Steps, "[]")
+	if err != nil {
+		return err
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set steps = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, record.ID, stepsJSON, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
 }
 
 func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
@@ -93,12 +123,54 @@ func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName,
 		return errors.New("task run cannot be empty")
 	}
 
-	return mongo.Repo.UpdateOne(ctx, &manifestDoc{}, bson.M{
-		"pipeline_id": pipelineID,
-		"steps": bson.M{"$elemMatch": bson.M{
-			"task_name": taskName,
-			"task_run":  bson.M{"$exists": false},
-			"status":    bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded}},
-		}},
-	}, bson.M{"$set": bson.M{"steps.$.task_run": taskRun, "updated_at": time.Now()}})
+	row := store.DB().QueryRowContext(ctx, `
+		select id, pipeline_id, steps, status, deleted_at
+		from manifests
+		where pipeline_id = $1 and deleted_at is null
+	`, pipelineID)
+	record, err := scanManifestRecord(row)
+	if err != nil {
+		return err
+	}
+
+	changed := false
+	for i := range record.Steps {
+		if record.Steps[i].TaskName != taskName {
+			continue
+		}
+		if record.Steps[i].TaskRun != "" || record.Steps[i].Status == model.StepFailed || record.Steps[i].Status == model.StepSucceeded {
+			return nil
+		}
+		record.Steps[i].TaskRun = taskRun
+		changed = true
+		break
+	}
+	if !changed {
+		return nil
+	}
+
+	stepsJSON, err := marshalJSON(record.Steps, "[]")
+	if err != nil {
+		return err
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set steps = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, record.ID, stepsJSON, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
+}
+
+func ensureRowsAffected(result sql.Result) error {
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

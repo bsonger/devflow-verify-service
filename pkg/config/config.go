@@ -2,9 +2,8 @@ package config
 
 import (
 	"context"
-	"github.com/bsonger/devflow-common/client/logging"
-	"github.com/bsonger/devflow-common/client/mongo"
-	commonModel "github.com/bsonger/devflow-common/model"
+	"database/sql"
+
 	"github.com/bsonger/devflow-service-common/observability"
 	"github.com/bsonger/devflow-verify-service/pkg/model"
 	"github.com/bsonger/devflow-verify-service/pkg/store"
@@ -12,11 +11,11 @@ import (
 )
 
 type Config struct {
-	Server    *model.ServerConfig `mapstructure:"server" json:"server" yaml:"server"`
-	Mongo     *model.MongoConfig  `mapstructure:"mongo"  json:"mongo"  yaml:"mongo"`
-	Log       *model.LogConfig    `mapstructure:"log"    json:"log"    yaml:"log"`
-	Otel      *model.OtelConfig   `mapstructure:"otel"   json:"otel"   yaml:"otel"`
-	Pyroscope string              `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
+	Server    *model.ServerConfig   `mapstructure:"server" json:"server" yaml:"server"`
+	Postgres  *model.PostgresConfig `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
+	Log       *model.LogConfig      `mapstructure:"log" json:"log" yaml:"log"`
+	Otel      *model.OtelConfig     `mapstructure:"otel" json:"otel" yaml:"otel"`
+	Pyroscope string                `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
 }
 
 func Load() (*Config, error) {
@@ -55,22 +54,28 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 		return nil, err
 	}
 
-	client, err := mongo.InitMongo(ctx, toCommonMongoConfig(config.Mongo), logging.Logger)
+	db, err := sql.Open("pgx", stringValue(config.Postgres, func(v *model.PostgresConfig) string { return v.DSN }))
 	if err != nil {
 		return shutdown, err
 	}
-	store.InitMongo(client, config.Mongo.DBName)
-	return shutdown, nil
-}
-
-func toCommonMongoConfig(cfg *model.MongoConfig) *commonModel.MongoConfig {
-	if cfg == nil {
-		return nil
+	store.ApplyPool(db,
+		intValue(config.Postgres, func(v *model.PostgresConfig) int { return v.MaxOpenConns }),
+		intValue(config.Postgres, func(v *model.PostgresConfig) int { return v.MaxIdleConns }),
+		intValue(config.Postgres, func(v *model.PostgresConfig) int { return v.ConnMaxLifetimeMinutes }),
+	)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return shutdown, err
 	}
-	return &commonModel.MongoConfig{
-		URI:    cfg.URI,
-		DBName: cfg.DBName,
-	}
+	store.InitPostgres(db)
+	return func(shutdownCtx context.Context) error {
+		closeErr := db.Close()
+		shutdownErr := shutdown(shutdownCtx)
+		if shutdownErr != nil {
+			return shutdownErr
+		}
+		return closeErr
+	}, nil
 }
 
 func ResolveConfigPort(cfg *Config) int {
@@ -92,4 +97,11 @@ func configValue(cfg *Config, getter func(*Config) string) string {
 		return ""
 	}
 	return getter(cfg)
+}
+
+func intValue[T any](value *T, getter func(*T) int) int {
+	if value == nil {
+		return 0
+	}
+	return getter(value)
 }
