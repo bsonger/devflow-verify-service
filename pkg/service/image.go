@@ -11,52 +11,52 @@ import (
 	"github.com/google/uuid"
 )
 
-var ManifestService = &manifestService{}
+var ImageService = &imageService{}
 
-type manifestService struct{}
+type imageService struct{}
 
-func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*manifestRecord, error) {
-	return scanManifestRecord(store.DB().QueryRowContext(ctx, `
+func (s *imageService) Get(ctx context.Context, id uuid.UUID) (*imageRecord, error) {
+	return scanImageRecord(store.DB().QueryRowContext(ctx, `
 		select id, pipeline_id, steps, status, deleted_at
-		from manifests
+		from images
 		where id = $1
 	`, id))
 }
 
-func (s *manifestService) AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error {
-	if manifestID == uuid.Nil {
-		return errors.New("manifest id cannot be zero")
+func (s *imageService) AssignPipelineID(ctx context.Context, imageID uuid.UUID, pipelineID string) error {
+	if imageID == uuid.Nil {
+		return errors.New("image id cannot be zero")
 	}
 	if pipelineID == "" {
 		return errors.New("pipeline id cannot be empty")
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set pipeline_id = $2, updated_at = $3
 		where id = $1 and deleted_at is null
-	`, manifestID, pipelineID, time.Now())
+	`, imageID, pipelineID, time.Now())
 	if err != nil {
 		return err
 	}
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error {
-	if manifestID == uuid.Nil {
-		return errors.New("manifest id cannot be zero")
+func (s *imageService) UpdateImageStatusByID(ctx context.Context, imageID uuid.UUID, status model.ImageStatus) error {
+	if imageID == uuid.Nil {
+		return errors.New("image id cannot be zero")
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set status = $2, updated_at = $3
 		where id = $1 and deleted_at is null
-	`, manifestID, status, time.Now())
+	`, imageID, status, time.Now())
 	if err != nil {
 		return err
 	}
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
+func (s *imageService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
 	if pipelineID == "" {
 		return errors.New("pipeline id cannot be empty")
 	}
@@ -66,10 +66,10 @@ func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, task
 
 	row := store.DB().QueryRowContext(ctx, `
 		select id, pipeline_id, steps, status, deleted_at
-		from manifests
+		from images
 		where pipeline_id = $1 and deleted_at is null
 	`, pipelineID)
-	record, err := scanManifestRecord(row)
+	record, err := scanImageRecord(row)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, task
 		return err
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set steps = $2, updated_at = $3
 		where id = $1 and deleted_at is null
 	`, record.ID, stepsJSON, time.Now())
@@ -112,7 +112,7 @@ func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, task
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
+func (s *imageService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
 	if pipelineID == "" {
 		return errors.New("pipeline id cannot be empty")
 	}
@@ -125,10 +125,10 @@ func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName,
 
 	row := store.DB().QueryRowContext(ctx, `
 		select id, pipeline_id, steps, status, deleted_at
-		from manifests
+		from images
 		where pipeline_id = $1 and deleted_at is null
 	`, pipelineID)
-	record, err := scanManifestRecord(row)
+	record, err := scanImageRecord(row)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName,
 		return err
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set steps = $2, updated_at = $3
 		where id = $1 and deleted_at is null
 	`, record.ID, stepsJSON, time.Now())

@@ -23,7 +23,7 @@ The service layer should stay focused on:
 
 The target relational resource model is:
 
-- `ManifestVerification` = build verification/result record
+- `ImageVerification` = build verification/result record
 - `ReleaseVerification` = release verification/result record
 
 ## Request Flow

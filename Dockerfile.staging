@@ -1,0 +1,20 @@
+FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.7 AS builder
+
+WORKDIR /workspace
+ENV GOPROXY=https://goproxy.cn,direct
+
+COPY devflow-service-common /workspace/devflow-service-common
+COPY devflow-verify-service /workspace/devflow-verify-service
+
+WORKDIR /workspace/devflow-verify-service
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/devflow-verify-service ./cmd
+
+FROM scratch
+WORKDIR /app
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /out/devflow-verify-service ./devflow-verify-service
+COPY --from=builder /workspace/devflow-verify-service/docs ./docs
+EXPOSE 8084
+USER 65532:65532
+ENTRYPOINT ["/app/devflow-verify-service"]

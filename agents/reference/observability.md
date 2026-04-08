@@ -53,7 +53,7 @@
   - `span_id`
   - `request_id`
 - 涉及控制面资源时，日志追加：
-  - `manifest_id`
+  - `image_id`
   - `release_id`
   - `intent_id`
   - `pipeline_id`
@@ -63,7 +63,7 @@
 ## Must Not
 
 - 不让每个服务直接接不同 exporter
-- 不把 `release_id`、`manifest_id`、`intent_id` 这类高基数字段放进 metrics label
+- 不把 `release_id`、`image_id`、`intent_id` 这类高基数字段放进 metrics label
 - 不把日志当成状态真相来源
 - 不把 token、secret、kubeconfig、完整 webhook body 直接写日志
 - 不把每个 debug 字段都做成正式指标

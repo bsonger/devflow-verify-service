@@ -16,7 +16,7 @@
 ## 观测约束
 
 - 任何调用其他服务或外部系统的代码都必须同时产出 `metrics + trace + structured log`
-- 不允许把 `release_id`、`manifest_id`、`intent_id`、`external_ref` 作为 metrics label
+- 不允许把 `release_id`、`image_id`、`intent_id`、`external_ref` 作为 metrics label
 - 这些业务主键只能进入日志字段和 trace attributes
 
 ## 文档约束

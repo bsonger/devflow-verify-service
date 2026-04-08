@@ -12,11 +12,11 @@ These endpoints accept external execution facts and write them back through the 
 
 ### Build status writeback
 - `POST /api/v1/verify/tekton/events`
-  - key fields: `manifest_id`, `status`, `pipeline_id`, `intent_id`, `external_ref`
+  - key fields: `image_id`, `status`, `pipeline_id`, `intent_id`, `external_ref`
 
 ### Build step writeback
 - `POST /api/v1/verify/tekton/steps`
-  - key fields: `manifest_id`, `pipeline_id`, `task_name`, `task_run`, `status`
+  - key fields: `image_id`, `pipeline_id`, `task_name`, `task_run`, `status`
 
 ### Release status writeback
 - `POST /api/v1/verify/argo/events`

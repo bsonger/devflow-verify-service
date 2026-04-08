@@ -35,7 +35,7 @@ Used by:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `intent_id` | `string` | optional | 对应 build intent |
-| `manifest_id` | `string` | required | 目标 manifest ID |
+| `image_id` | `string` | required | 目标 manifest ID |
 | `pipeline_id` | `string` | optional | pipeline 标识；若提供会回写到 manifest |
 | `status` | `ManifestStatus` | required | Manifest 状态 |
 | `message` | `string` | optional | 状态说明 |
@@ -47,7 +47,7 @@ Used by:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `manifest_id` | `string` | required | 目标 manifest ID |
+| `image_id` | `string` | required | 目标 manifest ID |
 | `pipeline_id` | `string` | optional | pipeline 标识；为空时服务会尝试从 manifest 读取 |
 | `task_name` | `string` | required | Tekton task 名 |
 | `task_run` | `string` | optional | TaskRun 名 |
@@ -117,7 +117,7 @@ Used by:
 
 ## Validation notes
 
-- `manifest_id` / `release_id` 必须是合法 UUID
+- `image_id` / `release_id` 必须是合法 UUID
 - required 字段由 handler 的 `binding:"required"` 定义
 - pipeline/task/release step 语义还受 service 写回逻辑约束
 
@@ -125,6 +125,6 @@ Used by:
 
 - router: `pkg/router/verify.go`
 - handler: `pkg/api/verify.go`
-- manifest writeback: `pkg/service/manifest.go`
+- manifest writeback: `pkg/service/image.go`
 - release writeback: `pkg/service/release.go`
 - intent writeback: `pkg/service/intent.go`

@@ -3,7 +3,7 @@ package model
 import "time"
 
 type StepStatus string
-type ManifestStatus string
+type ImageStatus string
 type ReleaseStatus string
 
 const (
@@ -14,10 +14,10 @@ const (
 )
 
 const (
-	ManifestPending   ManifestStatus = "Pending"
-	ManifestRunning   ManifestStatus = "Running"
-	ManifestSucceeded ManifestStatus = "Succeeded"
-	ManifestFailed    ManifestStatus = "Failed"
+	ImagePending   ImageStatus = "Pending"
+	ImageRunning   ImageStatus = "Running"
+	ImageSucceeded ImageStatus = "Succeeded"
+	ImageFailed    ImageStatus = "Failed"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 	ReleaseSyncFailed  ReleaseStatus = "SyncFailed"
 )
 
-type ManifestStep struct {
+type ImageStep struct {
 	TaskName  string     `json:"task_name"`
 	TaskRun   string     `json:"task_run,omitempty"`
 	Status    StepStatus `json:"status"`

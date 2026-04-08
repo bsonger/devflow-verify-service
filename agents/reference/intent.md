@@ -20,7 +20,7 @@ This file must not define intent semantics.
   - `Succeeded`
   - `Failed`
 - 当前确认的创建链路：
-  - `POST /api/v1/manifests` 在 `intent` 模式下先落库 Manifest，再创建 build intent
+  - `POST /api/v1/images` 在 `intent` 模式下先落库 Manifest，再创建 build intent
   - `POST /api/v1/releases` 在 `intent` 模式下先落库 Release，再创建 release intent
   - 创建响应会直接返回 `execution_intent_id`
 - 当前确认的消费链路：

@@ -20,14 +20,14 @@ import (
 var VerifyRouteApi = NewVerifyHandler()
 
 type VerifyHandler struct {
-	manifestSvc manifestWriteService
+	imageSvc    imageWriteService
 	releaseSvc  releaseWriteService
 	intentSvc   intentWriteService
 }
 
-type manifestWriteService interface {
-	AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error
-	UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error
+type imageWriteService interface {
+	AssignPipelineID(ctx context.Context, imageID uuid.UUID, pipelineID string) error
+	UpdateImageStatusByID(ctx context.Context, imageID uuid.UUID, status model.ImageStatus) error
 	UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error
 	BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error
 }
@@ -42,21 +42,21 @@ type intentWriteService interface {
 	UpdateStatusByResource(ctx context.Context, kind string, resourceID uuid.UUID, status string, externalRef, message string) error
 }
 
-var loadManifestPipelineID = func(ctx context.Context, id uuid.UUID) (string, error) {
-	manifest, err := service.ManifestService.Get(ctx, id)
+var loadImagePipelineID = func(ctx context.Context, id uuid.UUID) (string, error) {
+	image, err := service.ImageService.Get(ctx, id)
 	if err != nil {
 		return "", err
 	}
-	return manifest.PipelineID, nil
+	return image.PipelineID, nil
 }
 
 const VerifyTokenHeader = "X-Devflow-Verify-Token"
 
 type VerifyBuildStatusRequest struct {
 	IntentID    string               `json:"intent_id,omitempty"`
-	ManifestID  string               `json:"manifest_id" binding:"required"`
+	ImageID     string               `json:"image_id" binding:"required"`
 	PipelineID  string               `json:"pipeline_id,omitempty"`
-	Status      model.ManifestStatus `json:"status" binding:"required"`
+	Status      model.ImageStatus    `json:"status" binding:"required"`
 	Message     string               `json:"message,omitempty"`
 	ExternalRef string               `json:"external_ref,omitempty"`
 }
@@ -80,7 +80,7 @@ type VerifyReleaseStepRequest struct {
 }
 
 type VerifyBuildStepRequest struct {
-	ManifestID string           `json:"manifest_id" binding:"required"`
+	ImageID    string           `json:"image_id" binding:"required"`
 	PipelineID string           `json:"pipeline_id,omitempty"`
 	TaskName   string           `json:"task_name" binding:"required"`
 	TaskRun    string           `json:"task_run,omitempty"`
@@ -92,7 +92,7 @@ type VerifyBuildStepRequest struct {
 
 func NewVerifyHandler() *VerifyHandler {
 	return &VerifyHandler{
-		manifestSvc: service.ManifestService,
+		imageSvc:    service.ImageService,
 		releaseSvc:  service.ReleaseService,
 		intentSvc:   service.IntentService,
 	}
@@ -169,7 +169,7 @@ func (h *VerifyHandler) HandleArgoEvent(c *gin.Context) {
 
 // HandleTektonEvent
 // @Summary 回写构建状态
-// @Description 由 Tekton 或外部构建观察器回写 Manifest 级状态
+// @Description 由 Tekton 或外部构建观察器回写 Image 级状态
 // @Tags Verify
 // @Accept json
 // @Produce json
@@ -183,30 +183,30 @@ func (h *VerifyHandler) HandleTektonEvent(c *gin.Context) {
 		return
 	}
 
-	manifestID, err := uuid.Parse(req.ManifestID)
+	imageID, err := uuid.Parse(req.ImageID)
 	if err != nil {
-		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid manifest_id", nil)
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid image_id", nil)
 		return
 	}
 
 	if req.PipelineID != "" {
-		if err := h.manifestSvc.AssignPipelineID(c.Request.Context(), manifestID, req.PipelineID); err != nil {
+		if err := h.imageSvc.AssignPipelineID(c.Request.Context(), imageID, req.PipelineID); err != nil {
 			writeVerifyError(c, err)
 			return
 		}
 	}
 
-	if err := h.manifestSvc.UpdateManifestStatusByID(c.Request.Context(), manifestID, req.Status); err != nil {
+	if err := h.imageSvc.UpdateImageStatusByID(c.Request.Context(), imageID, req.Status); err != nil {
 		writeVerifyError(c, err)
 		return
 	}
 
 	if req.IntentID != "" {
 		if intentID, err := uuid.Parse(req.IntentID); err == nil {
-			_ = h.intentSvc.UpdateStatus(c.Request.Context(), intentID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+			_ = h.intentSvc.UpdateStatus(c.Request.Context(), intentID, mapImageStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 		}
 	} else {
-		_ = h.intentSvc.UpdateStatusByResource(c.Request.Context(), "build", manifestID, mapManifestStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
+		_ = h.intentSvc.UpdateStatusByResource(c.Request.Context(), "build", imageID, mapImageStatusToIntentStatus(req.Status), req.ExternalRef, req.Message)
 	}
 
 	httpx.WriteNoContent(c)
@@ -214,7 +214,7 @@ func (h *VerifyHandler) HandleTektonEvent(c *gin.Context) {
 
 // HandleTektonStepEvent
 // @Summary 回写构建步骤
-// @Description 由 Tekton TaskRun 观察器回写 Manifest steps
+// @Description 由 Tekton TaskRun 观察器回写 Image steps
 // @Tags Verify
 // @Accept json
 // @Produce json
@@ -228,14 +228,14 @@ func (h *VerifyHandler) HandleTektonStepEvent(c *gin.Context) {
 		return
 	}
 
-	manifestID, err := uuid.Parse(req.ManifestID)
+	imageID, err := uuid.Parse(req.ImageID)
 	if err != nil {
-		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid manifest_id", nil)
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid image_id", nil)
 		return
 	}
 
 	if req.PipelineID == "" {
-		pipelineID, err := loadManifestPipelineID(c.Request.Context(), manifestID)
+		pipelineID, err := loadImagePipelineID(c.Request.Context(), imageID)
 		if err != nil {
 			writeVerifyError(c, err)
 			return
@@ -244,18 +244,18 @@ func (h *VerifyHandler) HandleTektonStepEvent(c *gin.Context) {
 	}
 
 	if req.PipelineID == "" {
-		httpx.WriteError(c, http.StatusBadRequest, "failed_precondition", "pipeline_id is required until manifest is bound", nil)
+		httpx.WriteError(c, http.StatusBadRequest, "failed_precondition", "pipeline_id is required until image is bound", nil)
 		return
 	}
 
 	if req.TaskRun != "" {
-		if err := h.manifestSvc.BindTaskRun(c.Request.Context(), req.PipelineID, req.TaskName, req.TaskRun); err != nil {
+		if err := h.imageSvc.BindTaskRun(c.Request.Context(), req.PipelineID, req.TaskName, req.TaskRun); err != nil {
 			writeVerifyError(c, err)
 			return
 		}
 	}
 
-	if err := h.manifestSvc.UpdateStepStatus(c.Request.Context(), req.PipelineID, req.TaskName, req.Status, req.Message, req.StartTime, req.EndTime); err != nil {
+	if err := h.imageSvc.UpdateStepStatus(c.Request.Context(), req.PipelineID, req.TaskName, req.Status, req.Message, req.StartTime, req.EndTime); err != nil {
 		writeVerifyError(c, err)
 		return
 	}
@@ -301,11 +301,11 @@ func writeVerifyError(c *gin.Context, err error) {
 	httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 }
 
-func mapManifestStatusToIntentStatus(status model.ManifestStatus) string {
+func mapImageStatusToIntentStatus(status model.ImageStatus) string {
 	switch status {
-	case model.ManifestSucceeded:
+	case model.ImageSucceeded:
 		return "Succeeded"
-	case model.ManifestFailed:
+	case model.ImageFailed:
 		return "Failed"
 	default:
 		return "Running"

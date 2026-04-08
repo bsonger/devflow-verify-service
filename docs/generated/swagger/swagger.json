@@ -248,7 +248,7 @@
         "api.VerifyBuildStatusRequest": {
             "type": "object",
             "required": [
-                "manifest_id",
+                "image_id",
                 "status"
             ],
             "properties": {
@@ -258,7 +258,7 @@
                 "intent_id": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
                 "message": {
@@ -275,7 +275,7 @@
         "api.VerifyBuildStepRequest": {
             "type": "object",
             "required": [
-                "manifest_id",
+                "image_id",
                 "status",
                 "task_name"
             ],
@@ -283,7 +283,7 @@
                 "end_time": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
                 "message": {

@@ -16,26 +16,26 @@ import (
 	"github.com/google/uuid"
 )
 
-type stubManifestWriteService struct {
-	assignPipelineIDFn       func(context.Context, uuid.UUID, string) error
-	updateManifestStatusByID func(context.Context, uuid.UUID, model.ManifestStatus) error
-	updateStepStatusFn       func(context.Context, string, string, model.StepStatus, string, *time.Time, *time.Time) error
-	bindTaskRunFn            func(context.Context, string, string, string) error
+type stubImageWriteService struct {
+	assignPipelineIDFn    func(context.Context, uuid.UUID, string) error
+	updateImageStatusByID func(context.Context, uuid.UUID, model.ImageStatus) error
+	updateStepStatusFn    func(context.Context, string, string, model.StepStatus, string, *time.Time, *time.Time) error
+	bindTaskRunFn         func(context.Context, string, string, string) error
 }
 
-func (s stubManifestWriteService) AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error {
-	return s.assignPipelineIDFn(ctx, manifestID, pipelineID)
+func (s stubImageWriteService) AssignPipelineID(ctx context.Context, imageID uuid.UUID, pipelineID string) error {
+	return s.assignPipelineIDFn(ctx, imageID, pipelineID)
 }
 
-func (s stubManifestWriteService) UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error {
-	return s.updateManifestStatusByID(ctx, manifestID, status)
+func (s stubImageWriteService) UpdateImageStatusByID(ctx context.Context, imageID uuid.UUID, status model.ImageStatus) error {
+	return s.updateImageStatusByID(ctx, imageID, status)
 }
 
-func (s stubManifestWriteService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
+func (s stubImageWriteService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
 	return s.updateStepStatusFn(ctx, pipelineID, taskName, status, message, start, end)
 }
 
-func (s stubManifestWriteService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
+func (s stubImageWriteService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
 	return s.bindTaskRunFn(ctx, pipelineID, taskName, taskRun)
 }
 
@@ -189,7 +189,7 @@ func TestHealthReturnsDataEnvelope(t *testing.T) {
 func TestHandleArgoEventReturnsNoContent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	handler := &VerifyHandler{
-		manifestSvc: stubManifestWriteService{},
+		imageSvc:    stubImageWriteService{},
 		releaseSvc: stubReleaseWriteService{
 			updateStatusFn: func(context.Context, uuid.UUID, model.ReleaseStatus) error { return nil },
 			updateStepFn: func(context.Context, uuid.UUID, string, model.StepStatus, int32, string, *time.Time, *time.Time) error {
@@ -218,14 +218,14 @@ func TestHandleArgoEventReturnsNoContent(t *testing.T) {
 
 func TestHandleTektonStepEventMissingPipelineReturnsFailedPrecondition(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	origLoad := loadManifestPipelineID
-	loadManifestPipelineID = func(context.Context, uuid.UUID) (string, error) { return "", nil }
-	t.Cleanup(func() { loadManifestPipelineID = origLoad })
+	origLoad := loadImagePipelineID
+	loadImagePipelineID = func(context.Context, uuid.UUID) (string, error) { return "", nil }
+	t.Cleanup(func() { loadImagePipelineID = origLoad })
 
 	handler := &VerifyHandler{
-		manifestSvc: stubManifestWriteService{
-			assignPipelineIDFn:       func(context.Context, uuid.UUID, string) error { return nil },
-			updateManifestStatusByID: func(context.Context, uuid.UUID, model.ManifestStatus) error { return nil },
+		imageSvc: stubImageWriteService{
+			assignPipelineIDFn:    func(context.Context, uuid.UUID, string) error { return nil },
+			updateImageStatusByID: func(context.Context, uuid.UUID, model.ImageStatus) error { return nil },
 			updateStepStatusFn: func(context.Context, string, string, model.StepStatus, string, *time.Time, *time.Time) error {
 				return nil
 			},
@@ -238,7 +238,7 @@ func TestHandleTektonStepEventMissingPipelineReturnsFailedPrecondition(t *testin
 	r := gin.New()
 	r.POST("/api/v1/verify/tekton/steps", handler.HandleTektonStepEvent)
 
-	body := bytes.NewBufferString(`{"manifest_id":"11111111-1111-1111-1111-111111111111","task_name":"build","status":"Running"}`)
+	body := bytes.NewBufferString(`{"image_id":"11111111-1111-1111-1111-111111111111","task_name":"build","status":"Running"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/verify/tekton/steps", body)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -263,7 +263,7 @@ func TestHandleTektonStepEventMissingPipelineReturnsFailedPrecondition(t *testin
 func TestHandleReleaseStepEventNotFoundReturnsErrorEnvelope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	handler := &VerifyHandler{
-		manifestSvc: stubManifestWriteService{},
+		imageSvc:    stubImageWriteService{},
 		releaseSvc: stubReleaseWriteService{
 			updateStatusFn: func(context.Context, uuid.UUID, model.ReleaseStatus) error { return nil },
 			updateStepFn: func(context.Context, uuid.UUID, string, model.StepStatus, int32, string, *time.Time, *time.Time) error {

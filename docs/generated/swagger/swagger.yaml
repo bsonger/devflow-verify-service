@@ -5,7 +5,7 @@ definitions:
         type: string
       intent_id:
         type: string
-      manifest_id:
+      image_id:
         type: string
       message:
         type: string
@@ -14,14 +14,14 @@ definitions:
       status:
         $ref: '#/definitions/model.ManifestStatus'
     required:
-    - manifest_id
+    - image_id
     - status
     type: object
   api.VerifyBuildStepRequest:
     properties:
       end_time:
         type: string
-      manifest_id:
+      image_id:
         type: string
       message:
         type: string
@@ -36,7 +36,7 @@ definitions:
       task_run:
         type: string
     required:
-    - manifest_id
+    - image_id
     - status
     - task_name
     type: object

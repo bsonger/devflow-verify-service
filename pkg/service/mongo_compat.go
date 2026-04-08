@@ -17,11 +17,11 @@ type releaseRecord struct {
 	DeletedAt *time.Time
 }
 
-type manifestRecord struct {
+type imageRecord struct {
 	ID         uuid.UUID
 	PipelineID string
-	Status     model.ManifestStatus
-	Steps      []model.ManifestStep
+	Status     model.ImageStatus
+	Steps      []model.ImageStep
 	DeletedAt  *time.Time
 }
 
@@ -47,11 +47,11 @@ func scanReleaseRecord(scanner interface {
 	return &record, nil
 }
 
-func scanManifestRecord(scanner interface {
+func scanImageRecord(scanner interface {
 	Scan(dest ...any) error
-}) (*manifestRecord, error) {
+}) (*imageRecord, error) {
 	var (
-		record    manifestRecord
+		record    imageRecord
 		stepsJSON []byte
 		deletedAt sql.NullTime
 	)

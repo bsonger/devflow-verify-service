@@ -259,7 +259,7 @@ const docTemplate = `{
         "api.VerifyBuildStatusRequest": {
             "type": "object",
             "required": [
-                "manifest_id",
+                "image_id",
                 "status"
             ],
             "properties": {
@@ -269,7 +269,7 @@ const docTemplate = `{
                 "intent_id": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
                 "message": {
@@ -286,7 +286,7 @@ const docTemplate = `{
         "api.VerifyBuildStepRequest": {
             "type": "object",
             "required": [
-                "manifest_id",
+                "image_id",
                 "status",
                 "task_name"
             ],
@@ -294,7 +294,7 @@ const docTemplate = `{
                 "end_time": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
                 "message": {

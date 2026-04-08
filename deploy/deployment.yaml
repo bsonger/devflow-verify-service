@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devflow-verify-service
+  namespace: devflow-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: devflow-verify-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: devflow-verify-service
+    spec:
+      imagePullSecrets:
+        - name: aliyun-docker-config
+      containers:
+        - name: devflow-verify-service
+          image: registry.cn-hangzhou.aliyuncs.com/devflow/devflow-verify-service:staging
+          ports:
+            - containerPort: 8084
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/devflow/config/config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: config
+          secret:
+            secretName: verify-service-config

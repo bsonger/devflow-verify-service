@@ -7,15 +7,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestManifestVerificationContract(t *testing.T) {
-	typ := reflect.TypeOf(ManifestVerification{})
-	for _, field := range []string{"ManifestID", "IntentID", "PipelineID", "Status", "Steps", "Details", "LastObservedAt"} {
+func TestImageVerificationContract(t *testing.T) {
+	typ := reflect.TypeOf(ImageVerification{})
+	for _, field := range []string{"ImageID", "IntentID", "PipelineID", "Status", "Steps", "Details", "LastObservedAt"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
-			t.Fatalf("ManifestVerification missing field %s", field)
+			t.Fatalf("ImageVerification missing field %s", field)
 		}
-		if field == "ManifestID" && f.Type != reflect.TypeOf(uuid.UUID{}) {
-			t.Fatalf("ManifestVerification.ManifestID type = %v, want uuid.UUID", f.Type)
+		if field == "ImageID" && f.Type != reflect.TypeOf(uuid.UUID{}) {
+			t.Fatalf("ImageVerification.ImageID type = %v, want uuid.UUID", f.Type)
 		}
 	}
 }

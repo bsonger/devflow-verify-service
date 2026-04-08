@@ -18,7 +18,7 @@ For public API shape, ownership, and request payload details, prefer:
 
 - verify routes: `pkg/router/verify.go`
 - verify handler: `pkg/api/verify.go`
-- manifest writeback: `pkg/service/manifest.go`
+- manifest writeback: `pkg/service/image.go`
 - release writeback: `pkg/service/release.go`
 - intent writeback: `pkg/service/intent.go`
 
