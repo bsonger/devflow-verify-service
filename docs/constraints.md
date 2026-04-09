@@ -3,7 +3,7 @@
 ## 服务边界
 
 - 本仓库对外只允许 `Verify`
-- `Manifest`、`Release`、`Intent` 仅作为 verify 写回的内部依赖
+- `Image`、`Release`、`Intent` 仅作为 verify 写回的内部依赖
 - 不允许重新引入其他资源的对外 router、handler、Swagger 面
 
 ## 写回约束
@@ -21,5 +21,5 @@
 
 ## 文档约束
 
-- `README.md`、`AGENTS.md`、`agents/protocols/startup.md`、`docs/*.md` 必须描述 verify-only 边界
+- `README.md` 和 `docs/*.md` 必须描述 verify-only 边界
 - Swagger 只允许出现 `/api/v1/verify/*`

@@ -2,8 +2,13 @@
 
 ## Purpose
 
-`devflow-verify-service` defines the converged verify-ingress API surface under `/api/v1/verify/*`.
+`devflow-verify-service` defines the verify-ingress API surface under `/api/v1/verify/*`.
 These endpoints accept external execution facts and write them back through the approved verify path.
+
+## Swagger
+
+- local UI: `/swagger/index.html`
+- generated source: `docs/generated/swagger/swagger.yaml`
 
 ## Endpoint Groups
 
@@ -31,8 +36,8 @@ These endpoints accept external execution facts and write them back through the 
 - write endpoints use `X-Devflow-Verify-Token`
 - if `VERIFY_SERVICE_SHARED_TOKEN` is set, write requests must pass token validation
 - if `VERIFY_SERVICE_SHARED_TOKEN` is unset, local environments may access write endpoints without the token
-- verify-service does not expose public CRUD for `Manifest`, `Release`, or `Intent`
-- write endpoints are for controller/observer execution facts only
+- verify-service does not expose public CRUD for `Image`, `Release`, or `Intent`
+- write endpoints are for controller and observer execution facts only
 
 ## Response Rules
 
@@ -43,8 +48,8 @@ These endpoints accept external execution facts and write them back through the 
 
 ## Error Rules
 
-- request body missing / invalid ID / required field missing -> `400 invalid_argument`
-- missing target manifest or release -> `404 not_found`
+- request body missing, invalid ID, or required field missing -> `400 invalid_argument`
+- missing target image or release -> `404 not_found`
 - missing derived pipeline binding during step writeback -> `400 failed_precondition`
 - shared token validation failed -> `401 unauthorized`
 - internal writeback failure -> `500 internal`
@@ -52,7 +57,3 @@ These endpoints accept external execution facts and write them back through the 
 ## Boundary Note
 
 For repo scope and non-goals, see `docs/architecture.md`.
-
-## Swagger Note
-
-Generated Swagger artifacts must stay aligned with the current PostgreSQL-backed API contract. Regenerate them after route, request, or response changes.
