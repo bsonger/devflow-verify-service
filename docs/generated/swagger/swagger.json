@@ -24,37 +24,13 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.VerifyReleaseStatusRequest"
+                            "$ref": "#/definitions/pkg_api.VerifyReleaseStatusRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -69,10 +45,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpx.DataResponse-map_string_string"
                         }
                     }
                 }
@@ -98,44 +71,20 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.VerifyReleaseStepRequest"
+                            "$ref": "#/definitions/pkg_api.VerifyReleaseStepRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
         },
         "/api/v1/verify/tekton/events": {
             "post": {
-                "description": "由 Tekton 或外部构建观察器回写 Manifest 级状态",
+                "description": "由 Tekton 或外部构建观察器回写 Image 级状态",
                 "consumes": [
                     "application/json"
                 ],
@@ -153,44 +102,20 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.VerifyBuildStatusRequest"
+                            "$ref": "#/definitions/pkg_api.VerifyBuildStatusRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
         },
         "/api/v1/verify/tekton/steps": {
             "post": {
-                "description": "由 Tekton TaskRun 观察器回写 Manifest steps",
+                "description": "由 Tekton TaskRun 观察器回写 Image steps",
                 "consumes": [
                     "application/json"
                 ],
@@ -208,44 +133,87 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.VerifyBuildStepRequest"
+                            "$ref": "#/definitions/pkg_api.VerifyBuildStepRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
         }
     },
     "definitions": {
-        "api.VerifyBuildStatusRequest": {
+        "github_com_bsonger_devflow-verify-service_pkg_model.ImageStatus": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed"
+            ],
+            "x-enum-varnames": [
+                "ImagePending",
+                "ImageRunning",
+                "ImageSucceeded",
+                "ImageFailed"
+            ]
+        },
+        "github_com_bsonger_devflow-verify-service_pkg_model.ReleaseStatus": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed",
+                "RollingBack",
+                "RolledBack",
+                "Syncing",
+                "SyncFailed"
+            ],
+            "x-enum-varnames": [
+                "ReleasePending",
+                "ReleaseRunning",
+                "ReleaseSucceeded",
+                "ReleaseFailed",
+                "ReleaseRollingBack",
+                "ReleaseRolledBack",
+                "ReleaseSyncing",
+                "ReleaseSyncFailed"
+            ]
+        },
+        "github_com_bsonger_devflow-verify-service_pkg_model.StepStatus": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed"
+            ],
+            "x-enum-varnames": [
+                "StepPending",
+                "StepRunning",
+                "StepSucceeded",
+                "StepFailed"
+            ]
+        },
+        "httpx.DataResponse-map_string_string": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/map_string_string"
+                }
+            }
+        },
+        "map_string_string": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "pkg_api.VerifyBuildStatusRequest": {
             "type": "object",
             "required": [
                 "image_id",
@@ -255,10 +223,10 @@
                 "external_ref": {
                     "type": "string"
                 },
-                "intent_id": {
+                "image_id": {
                     "type": "string"
                 },
-                "image_id": {
+                "intent_id": {
                     "type": "string"
                 },
                 "message": {
@@ -268,11 +236,11 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.ManifestStatus"
+                    "$ref": "#/definitions/github_com_bsonger_devflow-verify-service_pkg_model.ImageStatus"
                 }
             }
         },
-        "api.VerifyBuildStepRequest": {
+        "pkg_api.VerifyBuildStepRequest": {
             "type": "object",
             "required": [
                 "image_id",
@@ -296,7 +264,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.StepStatus"
+                    "$ref": "#/definitions/github_com_bsonger_devflow-verify-service_pkg_model.StepStatus"
                 },
                 "task_name": {
                     "type": "string"
@@ -306,7 +274,7 @@
                 }
             }
         },
-        "api.VerifyReleaseStatusRequest": {
+        "pkg_api.VerifyReleaseStatusRequest": {
             "type": "object",
             "required": [
                 "release_id",
@@ -326,11 +294,11 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.ReleaseStatus"
+                    "$ref": "#/definitions/github_com_bsonger_devflow-verify-service_pkg_model.ReleaseStatus"
                 }
             }
         },
-        "api.VerifyReleaseStepRequest": {
+        "pkg_api.VerifyReleaseStepRequest": {
             "type": "object",
             "required": [
                 "release_id",
@@ -354,65 +322,12 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.StepStatus"
+                    "$ref": "#/definitions/github_com_bsonger_devflow-verify-service_pkg_model.StepStatus"
                 },
                 "step_name": {
                     "type": "string"
                 }
             }
-        },
-        "model.ManifestStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed"
-            ],
-            "x-enum-varnames": [
-                "ManifestPending",
-                "ManifestRunning",
-                "ManifestSucceeded",
-                "ManifestFailed"
-            ]
-        },
-        "model.ReleaseStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed",
-                "RollingBack",
-                "RolledBack",
-                "Syncing",
-                "SyncFailed"
-            ],
-            "x-enum-varnames": [
-                "ReleasePending",
-                "ReleaseRunning",
-                "ReleaseSucceeded",
-                "ReleaseFailed",
-                "ReleaseRollingBack",
-                "ReleaseRolledBack",
-                "ReleaseSyncing",
-                "ReleaseSyncFailed"
-            ]
-        },
-        "model.StepStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed"
-            ],
-            "x-enum-varnames": [
-                "StepPending",
-                "StepRunning",
-                "StepSucceeded",
-                "StepFailed"
-            ]
         }
     }
 }
