@@ -3,7 +3,7 @@ module github.com/bsonger/devflow-verify-service
 go 1.25.6
 
 require (
-	github.com/bsonger/devflow-service-common v0.0.0
+	github.com/bsonger/devflow-service-common v0.0.0-20260408172601-3b9b7861d057
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518
@@ -101,7 +101,6 @@ require (
 )
 
 replace (
-	github.com/bsonger/devflow-service-common => ../devflow-service-common
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/tools => golang.org/x/tools v0.35.0
