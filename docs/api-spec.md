@@ -8,6 +8,7 @@ These endpoints accept external execution facts and write them back through the 
 ## Swagger
 
 - local UI: `/swagger/index.html`
+- verify-scoped UI alias: `/api/v1/verify/swagger/index.html`
 - generated source: `docs/generated/swagger/swagger.yaml`
 
 ## Endpoint Groups
