@@ -1,26 +1,12 @@
 # Observability
 
-## Shared Baseline
+## Purpose
 
-This repo follows the shared telemetry contract implemented in `devflow-service-common`.
+`devflow-verify-service` emits the shared backend telemetry baseline plus external execution-fact writeback context.
 
-- structured logs with shared runtime fields
-- `devflow_http_*` ingress metrics
-- standard server/client spans with service-defined business attributes
-- optional diagnostics only for `pprof` and Pyroscope
+## Logs
 
-## Repo-Local Focus
-
-`devflow-verify-service` should add writeback context for:
-
-- `image`
-- `release`
-- `intent`
-- `pipeline`
-- `task`
-
-Recommended structured fields:
-
+Required structured fields:
 - `resource`
 - `resource_id`
 - `image_id`
@@ -31,13 +17,31 @@ Recommended structured fields:
 - `result`
 - `error_code`
 
-## Async Notes
+## Metrics
 
-- verify writeback endpoints should preserve inbound request trace context when callers provide it
-- updates triggered by external controllers should emit resource-scoped logs instead of high-cardinality metrics labels
+- use shared `devflow_http_*` ingress metrics
+- avoid high-cardinality labels for pipeline/task identifiers
+- rely on logs and spans, not label explosion, for detailed external callback debugging
 
-## Profile
+## Tracing
 
-- `pprof` is disabled by default
-- Pyroscope is disabled by default
-- both are enabled only through explicit runtime configuration
+- every business HTTP request should create a server span
+- preserve inbound trace context when external controllers send it
+- any downstream writeback or lookup must emit a client span with propagated trace context
+
+## Health and readiness
+
+- expose `GET /api/v1/verify/healthz`, `/metrics`, and readiness endpoints when the repo adds them
+- exclude `/swagger/*` and diagnostics endpoints from business telemetry rollups
+
+## Failure modes
+
+Watch for:
+- shared token validation failures
+- missing target resource or pipeline binding failures
+- external callback payload drift
+- writeback convergence failures into release-service state
+
+## Dashboards and runbooks
+
+Use the shared backend dashboard/runbook set plus verify-specific callback views when they exist.
