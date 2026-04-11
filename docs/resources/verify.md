@@ -9,7 +9,7 @@
 
 ## Purpose
 
-`Verify` 不是传统的 CRUD 资源，而是一组写回入口，用于接收外部执行事实并更新 `Manifest` / `Release` / `Intent`。
+`Verify` 不是传统的 CRUD 资源，而是一组写回入口，用于接收外部执行事实并更新 `Image` / `Release` / `Intent`。
 
 ## Public endpoints
 
@@ -35,9 +35,9 @@ Used by:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `intent_id` | `string` | optional | 对应 build intent |
-| `image_id` | `string` | required | 目标 manifest ID |
-| `pipeline_id` | `string` | optional | pipeline 标识；若提供会回写到 manifest |
-| `status` | `ManifestStatus` | required | Manifest 状态 |
+| `image_id` | `string` | required | 目标 image ID |
+| `pipeline_id` | `string` | optional | pipeline 标识；若提供会回写到 image |
+| `status` | `ImageStatus` | required | Image 状态 |
 | `message` | `string` | optional | 状态说明 |
 | `external_ref` | `string` | optional | 外部引用 |
 
@@ -47,8 +47,8 @@ Used by:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `image_id` | `string` | required | 目标 manifest ID |
-| `pipeline_id` | `string` | optional | pipeline 标识；为空时服务会尝试从 manifest 读取 |
+| `image_id` | `string` | required | 目标 image ID |
+| `pipeline_id` | `string` | optional | pipeline 标识；为空时服务会尝试从 image 读取 |
 | `task_name` | `string` | required | Tekton task 名 |
 | `task_run` | `string` | optional | TaskRun 名 |
 | `status` | `StepStatus` | required | step 状态 |
@@ -57,7 +57,7 @@ Used by:
 | `end_time` | `*time.Time` | optional | 结束时间 |
 
 Special rule:
-- 如果 `pipeline_id` 为空且 manifest 上也未绑定 pipeline，接口返回错误：`pipeline_id is required until manifest is bound`
+- 如果 `pipeline_id` 为空且 image 上也未绑定 pipeline，接口返回错误：`pipeline_id is required until image is bound`
 
 ### `VerifyReleaseStatusRequest`
 Used by:
@@ -87,7 +87,7 @@ Used by:
 
 ## Enums used by Verify
 
-### `ManifestStatus`
+### `ImageStatus`
 - `Pending`
 - `Running`
 - `Succeeded`
@@ -111,7 +111,7 @@ Used by:
 
 ## Writeback targets
 
-- build status / step -> `Manifest`
+- build status / step -> `Image`
 - release status / step -> `Release`
 - status convergence may also update related `Intent`
 
@@ -125,6 +125,6 @@ Used by:
 
 - router: `pkg/router/verify.go`
 - handler: `pkg/api/verify.go`
-- manifest writeback: `pkg/service/image.go`
+- image writeback: `pkg/service/image.go`
 - release writeback: `pkg/service/release.go`
 - intent writeback: `pkg/service/intent.go`

@@ -13,7 +13,7 @@ This repo follows the shared telemetry contract implemented in `devflow-service-
 
 `devflow-verify-service` should add writeback context for:
 
-- `manifest`
+- `image`
 - `release`
 - `intent`
 - `pipeline`

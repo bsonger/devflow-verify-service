@@ -50,7 +50,7 @@ Observer / Controller / External callback
 - `pkg/api`
   - verify handlers
 - `pkg/service`
-  - manifest/release writeback logic
+  - image/release writeback logic
   - minimal verification-result update logic
 - `pkg/store`
   - verification-result persistence
@@ -69,7 +69,7 @@ Observer / Controller / External callback
 - `Project` CRUD
 - `Application` CRUD
 - `Configuration` CRUD
-- public owner semantics for `Manifest` / `Release` / `Intent`
+- public owner semantics for `Image` / `Release` / `Intent`
 - Tekton / Argo active execution dispatch
 - long-term business-source-of-truth storage for release resources
 
@@ -79,8 +79,5 @@ Observer / Controller / External callback
 - `scripts/build.sh` runs the regen step and then builds `bin/devflow-verify-service`.
 - Export tooling/published repos copy `docs/generated/swagger`, so keep it up to date.
 
-## Swagger generation
-
-- `Dockerfile` runs `swag init -g cmd/main.go --parseDependency -o docs/generated/swagger` before building.
 - Generated artifacts live in `docs/generated/swagger` and should be regenerated when handlers change.
 - Export scripts copy the same folder so split repos stay consistent.

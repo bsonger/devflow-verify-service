@@ -73,6 +73,7 @@ func NewRouterWithOptions(opts Options) *gin.Engine {
 
 	if opts.EnableSwagger {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		r.GET("/api/v1/verify/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	api := r.Group("/api/v1")
