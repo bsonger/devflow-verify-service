@@ -1,25 +1,30 @@
-# 约束
+# Constraints
 
-## 服务边界
+## Ownership
 
-- 本仓库对外只允许 `Verify`
-- `Image`、`Release`、`Intent` 仅作为 verify 写回的内部依赖
-- 不允许重新引入其他资源的对外 router、handler、Swagger 面
+- this repo exposes only `Verify` as its public resource surface
+- `Image`, `Release`, and `Intent` exist here only as internal writeback dependencies
+- do not reintroduce public routers, handlers, or Swagger surfaces for unrelated resources
 
-## 写回约束
+## Hard constraints
 
-- 写回必须按资源 ID 精确更新
-- 对已终态 step 的重复回写应保持幂等
-- `pipeline_id`、`task_name`、`step_name` 不能为空字符串
-- token 校验必须在写接口生效
+- writeback must target resources precisely by resource ID
+- repeated writeback to terminal steps must remain idempotent
+- token validation must apply to write interfaces
+- Swagger must contain only `/api/v1/verify/*`
 
-## 观测约束
+## Data rules
 
-- 任何调用其他服务或外部系统的代码都必须同时产出 `metrics + trace + structured log`
-- 不允许把 `release_id`、`image_id`、`intent_id`、`external_ref` 作为 metrics label
-- 这些业务主键只能进入日志字段和 trace attributes
+- `pipeline_id`, `task_name`, and `step_name` must never be empty strings
+- verify payloads must continue to describe a verify-only boundary in `README.md` and `docs/*.md`
 
-## 文档约束
+## Dependency rules
 
-- `README.md` 和 `docs/*.md` 必须描述 verify-only 边界
-- Swagger 只允许出现 `/api/v1/verify/*`
+- any call to another service or external system must emit metrics, traces, and structured logs together
+- do not use `release_id`, `image_id`, `intent_id`, or `external_ref` as metric labels
+- those identifiers belong in logs and trace attributes only
+
+## Non-goals
+
+- exposing public CRUD surfaces for `Image`, `Release`, or `Intent`
+- broadening repo ownership beyond verify ingress and writeback normalization

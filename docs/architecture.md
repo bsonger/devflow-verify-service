@@ -6,7 +6,7 @@
 It accepts Tekton / Argo / release-step execution facts and writes them back through the approved verify path.
 It does not become the public CRUD owner for control-plane resources.
 
-## Architecture Style
+## Architecture style
 
 This repo uses a **layered ingress/writeback backend**:
 
@@ -26,7 +26,7 @@ The target relational resource model is:
 - `ImageVerification` = build verification/result record
 - `ReleaseVerification` = release verification/result record
 
-## Request Flow
+## Request flow
 
 ```text
 Observer / Controller / External callback
@@ -37,7 +37,7 @@ Observer / Controller / External callback
   -> HTTP response
 ```
 
-## Internal Package Layout
+## Internal package layout
 
 - `cmd/main.go`
   - process entrypoint only
@@ -57,14 +57,20 @@ Observer / Controller / External callback
 - `pkg/model`
   - verification-result-facing models
 
-## External Dependencies
+## External dependencies
 
 - `Gin`
 - PostgreSQL persistence
 - `devflow-service-common`
 - Tekton / Argo / controller callback sources
 
-## Non-Goals
+## Swagger generation
+
+- `scripts/regen-swagger.sh` refreshes `docs/generated/swagger`.
+- `scripts/build.sh` runs the regen step and then builds `bin/devflow-verify-service`.
+- Generated artifacts live in `docs/generated/swagger`; export tooling copies the same folder so split repos stay consistent.
+
+## Non-goals
 
 - `Project` CRUD
 - `Application` CRUD
@@ -72,12 +78,3 @@ Observer / Controller / External callback
 - public owner semantics for `Image` / `Release` / `Intent`
 - Tekton / Argo active execution dispatch
 - long-term business-source-of-truth storage for release resources
-
-## Swagger generation
-
-- `scripts/regen-swagger.sh` refreshes `docs/generated/swagger`.
-- `scripts/build.sh` runs the regen step and then builds `bin/devflow-verify-service`.
-- Export tooling/published repos copy `docs/generated/swagger`, so keep it up to date.
-
-- Generated artifacts live in `docs/generated/swagger` and should be regenerated when handlers change.
-- Export scripts copy the same folder so split repos stay consistent.
