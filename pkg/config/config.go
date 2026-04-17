@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/bsonger/devflow-service-common/observability"
+	"github.com/bsonger/devflow-verify-service/pkg/api"
 	"github.com/bsonger/devflow-verify-service/pkg/model"
 	"github.com/bsonger/devflow-verify-service/pkg/store"
 	"github.com/spf13/viper"
@@ -15,6 +16,7 @@ type Config struct {
 	Postgres  *model.PostgresConfig `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
 	Log       *model.LogConfig      `mapstructure:"log" json:"log" yaml:"log"`
 	Otel      *model.OtelConfig     `mapstructure:"otel" json:"otel" yaml:"otel"`
+	Auth      *model.AuthConfig     `mapstructure:"auth" json:"auth" yaml:"auth"`
 	Pyroscope string                `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
 }
 
@@ -68,6 +70,7 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 		return shutdown, err
 	}
 	store.InitPostgres(db)
+	api.SetVerifySharedToken(stringValue(config.Auth, func(v *model.AuthConfig) string { return v.SharedToken }))
 	return func(shutdownCtx context.Context) error {
 		closeErr := db.Close()
 		shutdownErr := shutdown(shutdownCtx)

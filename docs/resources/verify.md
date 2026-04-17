@@ -24,7 +24,7 @@
 写接口使用请求头：
 - `X-Devflow-Verify-Token`
 
-若设置了 `VERIFY_SERVICE_SHARED_TOKEN`，则写接口必须通过鉴权。
+若 `config.yaml` 设置了 `auth.shared_token`，则写接口必须通过鉴权。
 
 ## Request payloads
 

@@ -35,8 +35,8 @@ These endpoints accept external execution facts and write them back through the 
 ## Request Rules
 
 - write endpoints use `X-Devflow-Verify-Token`
-- if `VERIFY_SERVICE_SHARED_TOKEN` is set, write requests must pass token validation
-- if `VERIFY_SERVICE_SHARED_TOKEN` is unset, local environments may access write endpoints without the token
+- if `config.yaml` `auth.shared_token` is set, write requests must pass token validation
+- if `auth.shared_token` is empty, local environments may access write endpoints without the token
 - verify-service does not expose public CRUD for `Image`, `Release`, or `Intent`
 - write endpoints are for controller and observer execution facts only
 

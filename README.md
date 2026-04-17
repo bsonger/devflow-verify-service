@@ -8,6 +8,7 @@
 - accept external execution facts
 - normalize verify/writeback payloads
 - write execution facts back to control-plane resources through the approved path
+- runtime auth settings are loaded from mounted `config.yaml`
 
 ## Key Commands
 

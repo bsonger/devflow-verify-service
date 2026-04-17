@@ -42,7 +42,7 @@ Observer / Controller / External callback
 - `cmd/main.go`
   - process entrypoint only
 - `pkg/config`
-  - config loading
+  - `config.yaml` loading
   - runtime initialization
 - `pkg/router`
   - verify route registration
@@ -63,6 +63,12 @@ Observer / Controller / External callback
 - PostgreSQL persistence
 - `devflow-service-common`
 - Tekton / Argo / controller callback sources
+
+## Runtime configuration
+
+- writeback auth settings are loaded from mounted `config.yaml`
+- `auth.shared_token` is the source for `X-Devflow-Verify-Token` validation
+- deployment manifests should mount the config file instead of injecting verify auth through container env
 
 ## Swagger generation
 

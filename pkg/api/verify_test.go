@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -67,7 +66,7 @@ func (s stubIntentWriteService) UpdateStatusByResource(ctx context.Context, kind
 
 func TestRequireVerifyTokenAllowsWhenUnset(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	t.Setenv("VERIFY_SERVICE_SHARED_TOKEN", "")
+	SetVerifySharedToken("")
 
 	router := gin.New()
 	router.Use(RequireVerifyToken())
@@ -86,7 +85,7 @@ func TestRequireVerifyTokenAllowsWhenUnset(t *testing.T) {
 
 func TestRequireVerifyTokenRejectsInvalidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	t.Setenv("VERIFY_SERVICE_SHARED_TOKEN", "secret-token")
+	SetVerifySharedToken("secret-token")
 
 	router := gin.New()
 	router.Use(RequireVerifyToken())
@@ -118,7 +117,7 @@ func TestRequireVerifyTokenRejectsInvalidToken(t *testing.T) {
 
 func TestRequireVerifyTokenAcceptsValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	t.Setenv("VERIFY_SERVICE_SHARED_TOKEN", "secret-token")
+	SetVerifySharedToken("secret-token")
 
 	router := gin.New()
 	router.Use(RequireVerifyToken())
@@ -136,7 +135,7 @@ func TestRequireVerifyTokenAcceptsValidToken(t *testing.T) {
 	}
 }
 
-func TestRequireVerifyTokenUsesEnvironmentAtRequestTime(t *testing.T) {
+func TestRequireVerifyTokenUsesConfiguredTokenAtRequestTime(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -145,12 +144,7 @@ func TestRequireVerifyTokenUsesEnvironmentAtRequestTime(t *testing.T) {
 		c.Status(http.StatusNoContent)
 	})
 
-	if err := os.Setenv("VERIFY_SERVICE_SHARED_TOKEN", "dynamic-secret"); err != nil {
-		t.Fatalf("setenv failed: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Unsetenv("VERIFY_SERVICE_SHARED_TOKEN")
-	})
+	SetVerifySharedToken("dynamic-secret")
 
 	req := httptest.NewRequest(http.MethodPost, "/protected", nil)
 	req.Header.Set(VerifyTokenHeader, "dynamic-secret")
@@ -189,7 +183,7 @@ func TestHealthReturnsDataEnvelope(t *testing.T) {
 func TestHandleArgoEventReturnsNoContent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	handler := &VerifyHandler{
-		imageSvc:    stubImageWriteService{},
+		imageSvc: stubImageWriteService{},
 		releaseSvc: stubReleaseWriteService{
 			updateStatusFn: func(context.Context, uuid.UUID, model.ReleaseStatus) error { return nil },
 			updateStepFn: func(context.Context, uuid.UUID, string, model.StepStatus, int32, string, *time.Time, *time.Time) error {
@@ -263,7 +257,7 @@ func TestHandleTektonStepEventMissingPipelineReturnsFailedPrecondition(t *testin
 func TestHandleReleaseStepEventNotFoundReturnsErrorEnvelope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	handler := &VerifyHandler{
-		imageSvc:    stubImageWriteService{},
+		imageSvc: stubImageWriteService{},
 		releaseSvc: stubReleaseWriteService{
 			updateStatusFn: func(context.Context, uuid.UUID, model.ReleaseStatus) error { return nil },
 			updateStepFn: func(context.Context, uuid.UUID, string, model.StepStatus, int32, string, *time.Time, *time.Time) error {

@@ -10,7 +10,7 @@
 
 ## 鉴权
 
-如果设置了 `VERIFY_SERVICE_SHARED_TOKEN`：
+如果 `config.yaml` 设置了 `auth.shared_token`：
 
 - 请求头必须带 `X-Devflow-Verify-Token`
 - `healthz` 不需要鉴权

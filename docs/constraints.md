@@ -11,6 +11,8 @@
 - writeback must target resources precisely by resource ID
 - repeated writeback to terminal steps must remain idempotent
 - token validation must apply to write interfaces
+- verify writeback auth config must come from mounted `config.yaml`
+- do not read shared tokens directly from environment variables in handlers or middleware
 - Swagger must contain only `/api/v1/verify/*`
 
 ## Data rules

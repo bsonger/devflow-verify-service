@@ -20,3 +20,7 @@ type OtelConfig struct {
 	Endpoint    string `mapstructure:"endpoint" json:"endpoint" yaml:"endpoint"`
 	ServiceName string `mapstructure:"service_name" json:"service_name" yaml:"service_name"`
 }
+
+type AuthConfig struct {
+	SharedToken string `mapstructure:"shared_token" json:"shared_token" yaml:"shared_token"`
+}

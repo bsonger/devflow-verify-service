@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bsonger/devflow-service-common/httpx"
@@ -18,11 +18,15 @@ import (
 )
 
 var VerifyRouteApi = NewVerifyHandler()
+var (
+	verifySharedTokenMu sync.RWMutex
+	verifySharedToken   string
+)
 
 type VerifyHandler struct {
-	imageSvc    imageWriteService
-	releaseSvc  releaseWriteService
-	intentSvc   intentWriteService
+	imageSvc   imageWriteService
+	releaseSvc releaseWriteService
+	intentSvc  intentWriteService
 }
 
 type imageWriteService interface {
@@ -53,12 +57,12 @@ var loadImagePipelineID = func(ctx context.Context, id uuid.UUID) (string, error
 const VerifyTokenHeader = "X-Devflow-Verify-Token"
 
 type VerifyBuildStatusRequest struct {
-	IntentID    string               `json:"intent_id,omitempty"`
-	ImageID     string               `json:"image_id" binding:"required"`
-	PipelineID  string               `json:"pipeline_id,omitempty"`
-	Status      model.ImageStatus    `json:"status" binding:"required"`
-	Message     string               `json:"message,omitempty"`
-	ExternalRef string               `json:"external_ref,omitempty"`
+	IntentID    string            `json:"intent_id,omitempty"`
+	ImageID     string            `json:"image_id" binding:"required"`
+	PipelineID  string            `json:"pipeline_id,omitempty"`
+	Status      model.ImageStatus `json:"status" binding:"required"`
+	Message     string            `json:"message,omitempty"`
+	ExternalRef string            `json:"external_ref,omitempty"`
 }
 
 type VerifyReleaseStatusRequest struct {
@@ -92,15 +96,15 @@ type VerifyBuildStepRequest struct {
 
 func NewVerifyHandler() *VerifyHandler {
 	return &VerifyHandler{
-		imageSvc:    service.ImageService,
-		releaseSvc:  service.ReleaseService,
-		intentSvc:   service.IntentService,
+		imageSvc:   service.ImageService,
+		releaseSvc: service.ReleaseService,
+		intentSvc:  service.IntentService,
 	}
 }
 
 func RequireVerifyToken() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		expected := strings.TrimSpace(os.Getenv("VERIFY_SERVICE_SHARED_TOKEN"))
+		expected := VerifySharedToken()
 		if expected == "" {
 			c.Next()
 			return
@@ -115,6 +119,18 @@ func RequireVerifyToken() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func SetVerifySharedToken(token string) {
+	verifySharedTokenMu.Lock()
+	defer verifySharedTokenMu.Unlock()
+	verifySharedToken = strings.TrimSpace(token)
+}
+
+func VerifySharedToken() string {
+	verifySharedTokenMu.RLock()
+	defer verifySharedTokenMu.RUnlock()
+	return verifySharedToken
 }
 
 // Health
